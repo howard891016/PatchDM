@@ -23,7 +23,8 @@ def resize_and_convert(img, size, resample, quality=100):
 
 
 def resize_multiple(img,
-                    sizes=(128, 256, 512, 1024),
+                    # sizes=(128, 256, 512, 1024),
+                    sizes=(32, 64, 128),
                     resample=Image.LANCZOS,
                     quality=100):
     imgs = []
@@ -48,7 +49,8 @@ def resize_worker(img_file, resample):
 def prepare(env,
             paths,
             n_worker,
-            sizes=(128, 256, 512, 1024),
+            # sizes=(128, 256, 512, 1024),
+            sizes=(32, 64, 128),
             resample=Image.LANCZOS):
     resize_fn = partial(resize_worker, resample=resample)
 

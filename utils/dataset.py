@@ -138,12 +138,15 @@ def make_transform(
     transform = transforms.Compose(transform)
     return transform
 
-
+# Modified: Change dataset img size
 class FFHQlmdb(Dataset):
     def __init__(self,
-                 path=os.path.expanduser('datasets/ffhq256.lmdb'),
-                 image_size=256,
-                 original_resolution=256,
+                #  path=os.path.expanduser('datasets/ffhq256.lmdb'),
+                 path=os.path.expanduser('datasets/ffhq64.lmdb'),
+                #  image_size=256,
+                 image_size=64,
+                #  original_resolution=256,
+                 original_resolution=64,
                  split=None,
                  as_tensor: bool = True,
                  do_augment: bool = False,

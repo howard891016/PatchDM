@@ -74,10 +74,11 @@ def ffhq64_ddpm():
     conf.scale_up_gpus(4)
     return conf
 
-
+# Modified: Change dataset name
 def ffhq64_autoenc():
     conf = autoenc_base()
-    conf.data_name = 'ffhqlmdb256'
+    # conf.data_name = 'ffhqlmdb256'
+    conf.data_name = 'ffhqlmdb64'
     conf.warmup = 0
     conf.total_samples = 72_000_000
     conf.net_ch_mult = (1, 2, 4, 8)

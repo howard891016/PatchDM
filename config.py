@@ -253,6 +253,10 @@ class TrainConfig(BaseConfig):
             return FFHQlmdb(path=path or self.data_path,
                             image_size=256,
                             **kwargs)
+        if 'ffhq64' in self.data_path:
+            return FFHQlmdb(path=path or self.data_path,
+                            image_size=64,
+                            **kwargs)
         elif 'bedroom' in self.data_path:
             return Horse_lmdb(path=path or self.data_path,
                               image_size=256,

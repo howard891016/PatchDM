@@ -8,7 +8,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--batch_size', '-b', type=int, default=96,
                         help='batch size (all gpus)')
-    parser.add_argument('--patch_size', '-ps', type=int, default=64,
+    parser.add_argument('--patch_size', '-ps', type=int, default=32,
                         help='model base patch size')
     parser.add_argument('--data_path', '-d', type=str, default="./dataset",
                         help='dataset path')
@@ -51,8 +51,13 @@ if __name__ == '__main__':
     elif conf.patch_size == 64:
         conf.net_ch_mult = (1, 2, 4, 8)
         conf.net_enc_channel_mult = (1, 2, 4, 8, 8)
+    elif conf.patch_size == 32:
+        conf.net_ch = 64  # 與 64x64 的基礎通道數相同，但可以減少為 32 作為備選
+        conf.net_ch_mult = (1, 2, 4, 8)  # 確保層數與輸入大小匹配
+        conf.net_enc_channel_mult = (1, 2, 4, 8)  # 避免通道數倍增過大
+        conf.make_model_conf()
     else:
-        raise NotImplementedError("Patch size not in [64,128,256]")
+        raise NotImplementedError("Patch size not in [32,64,128,256]")
         
     train(conf, gpus=gpus)
 

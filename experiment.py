@@ -190,6 +190,26 @@ class LitModel(pl.LightningModule):
         ##############################################
 
         self.train_data = self.conf.make_dataset()
+        
+        # min_val = float('inf')
+        # max_val = -float('inf')
+
+        # for idx in range(len(self.train_data)):
+        #     sample = self.train_data[idx]  # 獲取一個樣本 {'img': img, 'index': index}
+        #     img = sample['img']  # img 是 Tensor 格式
+            
+        #     # 檢查圖片的最小值和最大值
+        #     img_min = img.min().item()
+        #     img_max = img.max().item()
+            
+        #     min_val = min(min_val, img_min)
+        #     max_val = max(max_val, img_max)
+
+        # print(f"Min value: {min_val}")
+        # print(f"Max value: {max_val}")
+
+
+        
         if self.train_data is not None:
             print('train data:', len(self.train_data))
         self.val_data = self.train_data
@@ -384,7 +404,7 @@ class LitModel(pl.LightningModule):
                                                       loss_mask=loss_mask,
                                                       next_loss_mask = next_loss_mask,
                                                       idx = idxs,
-                                                      patch_size = self.patch_size,)
+                                                          patch_size = self.patch_size,)
             elif self.conf.train_mode.is_latent_diffusion():
                 """
                 training the latent variables!
@@ -434,7 +454,7 @@ class LitModel(pl.LightningModule):
             else:
                 imgs = batch['img']
                 idx = batch["index"]
-            self.log_sample(x_start = imgs, step = self.global_step, idx = idx)
+                self.log_sample(x_start = imgs, step = self.global_step, idx = idx)
 
     def on_before_optimizer_step(self, optimizer: Optimizer,
                                  optimizer_idx: int) -> None:
@@ -715,7 +735,8 @@ class LitModel(pl.LightningModule):
                     latent_sampler = None
 
                 conf = self.conf.clone()
-                conf.eval_num_images = 50_000
+                # conf.eval_num_images = 50_000
+                # conf.eval_num_images = 1
                 generate(
                     sampler,
                     self.model,

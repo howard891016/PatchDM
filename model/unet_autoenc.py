@@ -155,6 +155,8 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
         H,W = imgs.shape[2:]
         patch_num_x = H // patch_size
         patch_num_y = W // patch_size
+        # patch_num_x = 2
+        # patch_num_y = 2
 
         if t is not None:
             t_cur = repeat(t,'h -> (h repeat)',repeat =int(x.shape[0]/t.shape[0]))
@@ -266,8 +268,9 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
             # happens when training only the autonecoder
             h = None
             hs = [[] for _ in range(len(self.conf.channel_mult))]
-
+        import sys
         ''' For training mode '''
+        # print(do_train)
         if do_train:
             prob = 1
             p1 = 2
@@ -277,6 +280,10 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
             p1 = patch_num_x+1
             p2 = patch_num_y+1
 
+        # print("p1: " + str(p1)+", p2: " + str(p2))
+        # print("patch size: " + str(patch_size))
+        # print("img shape: " + str(imgs.shape))
+        # sys.exit()
         # output blocks
         if do_train: # Change latent space
             # First runturn
@@ -346,6 +353,7 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
                 if i == 0:
                     half_p = int(height//2)
                     h_ori = rearrange(h, '(b p1 p2) c h w -> b c (p1 h) (p2 w)', p1 = p1, p2 = p2)
+                    # h_ori = rearrange(h, '(b p1 p2) c h w -> b c (p1 h) (p2 w)', p1 = 1, p2 = 1)
                     h_ori_crop = h_ori[:, :, half_p:-half_p, half_p:-half_p]
                     h_shift = rearrange(h_ori_crop, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = height, w = width)
                     h = h_shift
@@ -358,6 +366,7 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
                         if lateral_batch_size != h.size(0):
                             half_p = int(height//2)
                             lateral_ori = rearrange(lateral, '(b p1 p2) c h w -> b c (p1 h) (p2 w)', p1 = p1, p2 = p2)
+                            # lateral_ori = rearrange(lateral, '(b p1 p2) c h w -> b c (p1 h) (p2 w)', p1 = 1, p2 = 1)
                             lateral_ori_crop = lateral_ori[:, :, half_p:-half_p, half_p:-half_p]
                             lateral_shift = rearrange(lateral_ori_crop, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = height, w = width)
                             lateral  = lateral_shift
@@ -365,8 +374,13 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
                         lateral = None
 
                     if dec_time_emb.size(0) != h.size(0): # for change of dimension
-                        # change of position embedding
+                        # # change of position embedding
+                        # print(h.size(0))
+                        # print(res_new.time_emb.size(0))
+                        # print(lateral.size(0))
+                        # print(res_new.emb.size(0))
                         assert h.size(0) == res_new.time_emb.size(0) == lateral.size(0) == res_new.emb.size(0)
+                        
                         h = self.output_blocks[k](h,
                                             emb=res_new.time_emb,
                                             cond=res_new.emb, #res_new.emb,

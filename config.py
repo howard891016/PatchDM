@@ -64,7 +64,8 @@ class TrainConfig(BaseConfig):
     diffusion_type: str = None
     dropout: float = 0.1
     ema_decay: float = 0.9999
-    eval_num_images: int = 5_000
+    # eval_num_images: int = 5_000
+    eval_num_images: int = 1
     eval_every_samples: int = 200_000
     eval_ema_every_samples: int = 200_000
     fid_use_torch: bool = True
@@ -72,7 +73,8 @@ class TrainConfig(BaseConfig):
     grad_clip: float = 1
     img_size: int = 64
     image_size: str = "(512,1024)"
-    lr: float = 0.0001
+    # lr: float = 0.0001
+    lr: float = 0.00005
     optimizer: OptimizerType = OptimizerType.adam
     weight_decay: float = 0
     model_conf: ModelConfig = None
@@ -141,7 +143,7 @@ class TrainConfig(BaseConfig):
     data_cache_dir: str = os.path.expanduser('~/cache')
     work_cache_dir: str = os.path.expanduser('~/mycache')
     # to be overridden
-    name: str = 'test'
+    name: str = 'exp'
     output_dir: str = f'{work_cache_dir}/gen_images/{name}'
     data_path: str = ""
 
@@ -256,6 +258,7 @@ class TrainConfig(BaseConfig):
         if 'ffhq64' in self.data_path:
             return FFHQlmdb(path=path or self.data_path,
                             image_size=64,
+                            # image_size=32,
                             **kwargs)
         elif 'bedroom' in self.data_path:
             return Horse_lmdb(path=path or self.data_path,

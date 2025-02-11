@@ -19,6 +19,8 @@ def render_uncondition(conf: TrainConfig,
     patch_num_x = H // patch_size
     patch_num_y = W // patch_size
     B = len(x_T)//patch_num_x//patch_num_y
+    # print("here")
+    print("")
     if conf.train_mode == TrainMode.diffusion:
         assert conf.model_type.can_sample()
         return sampler.sample(model=model, noise=x_T)
@@ -31,18 +33,29 @@ def render_uncondition(conf: TrainConfig,
 
         if clip_latent_noise:
             latent_noise = latent_noise.clip(-1, 1)
-
+        print("---is latent diffusion---")
         cond = latent_sampler.sample(
             model=model.latent_net,
             noise=latent_noise,
             clip_denoised=conf.latent_clip_sample,
         )
-
+        print(type(cond))
+        print("cond size")
+        print(cond.shape)
+        print("---finish latent sample---")
+        # print(cond)
         if conf.latent_znormalize:
+            # print("check")
             cond = cond * conds_std.to(device) + conds_mean.to(device)
 
         # the diffusion on the model
-        return sampler.sample(model=model, noise=x_T, cond=cond, all_pos=all_pos, patch_size=patch_size, shape=(B,3,H,W))
+        print("---sample---")
+        img = sampler.sample(model=model, noise=x_T, cond=cond, all_pos=all_pos, patch_size=patch_size, shape=(B,3,H,W))
+        print("---finish sample---")
+        # print("Min value:", img.min().item())
+        # print("Max value:", img.max().item())
+
+        return img
     else:
         raise NotImplementedError()
 

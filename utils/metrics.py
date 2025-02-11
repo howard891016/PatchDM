@@ -91,8 +91,13 @@ def generate(
         x_T = torch.randn(
                     (batch_size*patch_num_x*patch_num_y, 3, conf.patch_size, conf.patch_size),
                     device=device)
+        import sys
+        print("test")
+        
+        # print()
         
         if conf.model_type.can_sample():
+            print("can_sample")
             eval_num_images = chunk_size(conf.eval_num_images, rank,
                                          world_size)
             desc = "generating images"
@@ -121,11 +126,16 @@ def generate(
                         os.path.join(conf.generate_dir, f'{img_name}.png'))
         elif conf.model_type == ModelType.autoencoder:
             if conf.train_mode.is_latent_diffusion():
+                # print("is_latent_diffusion")
                 # evaluate autoencoder + latent diffusion (doesn't give the images)
                 model: BeatGANsAutoencModel
                 eval_num_images = chunk_size(conf.eval_num_images, rank,
                                              world_size)
                 desc = "generating images"
+                seeded_data_root = "data_pair"
+                z0_cllt = []
+                data_cllt = []
+                label_cllt = []
                 for i in trange(0, eval_num_images, batch_size, desc=desc):
                     batch_size = min(batch_size, eval_num_images - i)
                     
@@ -142,14 +152,48 @@ def generate(
                         patch_size=conf.patch_size,
                         img_size = (H,W),
                     ).cpu()
+                    
                     batch_images = (batch_images + 1) / 2
+                    batch_images = th.clamp(batch_images, 0., 1.)
+                    # sampling_shape = (batch_size, 3, H, W)
+                    
+                    print("Min value:", batch_images.min().item())
+                    print("Max value:", batch_images.max().item())
+
+                    
+                    # Modified: Get data pair
+                    # z0 = get_z0(th.zeros(sampling_shape, device=device), train=False).to(device)
+                    # if z0.shape != batch_images.shape:
+                    #     print("z0 shape and batch images shape not the same!!")
+                    #     print("z0 shape: " + str(z0.shape) + ", batch_images shape: " + str(batch_images.shape))
+                    #     assert z0.shape == batch.shape
+                    #     sys.exit()
+                    # z0_cllt.append(z0.cpu())
+                    # data_cllt.append(batch_images)
+                    # if (i + 1) % 5 == 0:
+                    #     save_data_pair(seeded_data_root, z0_cllt, data_cllt, eval_num_images, class_cllt=label_cllt, z0_name='z0_tmp.npy', z1_name='z1_tmp.npy')
+
+                    import matplotlib.pyplot as plt
+                    
+                    
+                    
+                    # 顯示圖片
+                    # plt.imshow(batch_images_01.squeeze(), cmap="gray")
+                    # plt.colorbar()
+                    # plt.show()
+                                        
                     # keep the generated images
                     for j in range(len(batch_images)):
                         img_name = filename(i + j)
                         torchvision.utils.save_image(
                             batch_images[j],
                             os.path.join(conf.generate_dir, f'{img_name}.png'))
+                        
+                # save_data_pair(seeded_data_root, z0_cllt, data_cllt, eval_num_images, class_cllt=label_cllt)
+                # delete_tmp_data(seeded_data_root)
+                
             else:
+                print("not_latent_diffusion")
                 train_loader = make_subset_loader(conf,
                                                   dataset=train_data,
                                                   batch_size=batch_size,
@@ -182,6 +226,33 @@ def generate(
     model.train()
 
     barrier()
+
+def save_data_pair(data_root, z0_cllt, z1_cllt, total_number_of_samples, z0_name='z0.npy', z1_name='z1.npy', class_cllt=None):
+    z0_cllt = torch.cat(z0_cllt).cpu()[:total_number_of_samples]
+    z1_cllt = torch.cat(z1_cllt).cpu()[:total_number_of_samples]
+    print(f'z1 shape: {z1_cllt.shape}; z0 shape: {z0_cllt.shape}')
+    print(f'z0 mean: {z0_cllt.mean()}, z0 std: {z0_cllt.std()}')
+    if not os.path.exists(data_root):
+        os.mkdir(data_root)
+    np.save(os.path.join(data_root, z1_name), z1_cllt.numpy())
+    np.save(os.path.join(data_root, z0_name), z0_cllt.numpy())
+    if class_cllt is not None and len(class_cllt) > 0:
+        class_cllt = torch.cat(class_cllt).cpu()[:total_number_of_samples].float()
+        np.save(os.path.join(data_root, 'label.npy'), class_cllt.numpy())
+
+def delete_tmp_data(data_root):
+    # remove tmp data if exists
+    if os.path.exists(os.path.join(data_root, 'z0_tmp.npy')):
+        os.remove(os.path.join(data_root, 'z0_tmp.npy'))
+    if os.path.exists(os.path.join(data_root, 'z1_tmp.npy')):
+        os.remove(os.path.join(data_root, 'z1_tmp.npy'))
+
+
+def get_z0(batch, train=True):
+        n,c,h,w = batch.shape 
+        ### standard gaussian #+ 0.5
+        cur_shape = (n, c, h, w)
+        return torch.randn(cur_shape) * 1.0
 
 
 def loader_to_path(loader: DataLoader, path: str, denormalize: bool):

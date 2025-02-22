@@ -8,7 +8,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--batch_size', '-b', type=int, default=96,
                         help='batch size (all gpus)')
-    parser.add_argument('--patch_size', '-ps', type=int, default=32,
+    parser.add_argument('--patch_size', '-ps', type=int, default=64,
                         help='model base patch size')
     parser.add_argument('--data_path', '-d', type=str, default="./dataset",
                         help='dataset path')
@@ -22,7 +22,7 @@ if __name__ == '__main__':
                         help='use cfg')
 
     args = parser.parse_args()
-    gpus = [0]
+    gpus = [0,1]
 
     conf = train_autoenc()
 
@@ -58,7 +58,8 @@ if __name__ == '__main__':
         conf.make_model_conf()
     else:
         raise NotImplementedError("Patch size not in [32,64,128,256]")
-        
+    
+    print("GPUS: " + str(gpus))
     train(conf, gpus=gpus)
 
     

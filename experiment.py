@@ -29,6 +29,18 @@ from utils.renderer import *
 from einops import rearrange
 from torchvision import transforms
 
+# Modified: added import
+import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.utils.data.distributed import DistributedSampler
+import pytorch_lightning as pl
+from pytorch_lightning.plugins import DDPPlugin
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
+
+torch.serialization.add_safe_globals([ModelCheckpoint])
+
 
 class LitModel(pl.LightningModule):
     def __init__(self, conf: TrainConfig):
@@ -775,7 +787,7 @@ def is_time(num_samples, every, step_size):
 
 def train(conf: TrainConfig, gpus, nodes=1, mode: str = 'train'):
     print('conf:', conf.name)
-    model = LitModel(conf)
+    model = LitModel(conf)  # 移動模型到對應的 GPU
     callbacks = [LearningRateMonitor()]
 
     if conf.logdir and not os.path.exists(conf.logdir):
@@ -808,6 +820,8 @@ def train(conf: TrainConfig, gpus, nodes=1, mode: str = 'train'):
                                              version='')
     else:
         tb_logger = None
+
+    # Modified: Add plugin for parallel
     plugins = []
     if len(gpus) == 1 and nodes == 1:
         accelerator = None
@@ -816,12 +830,15 @@ def train(conf: TrainConfig, gpus, nodes=1, mode: str = 'train'):
         from pytorch_lightning.plugins import DDPPlugin
         plugins.append(DDPPlugin(find_unused_parameters=False))
 
+    print("GPU num: " + str(len(gpus)))
+
     trainer = pl.Trainer(
         max_steps=conf.total_samples // conf.batch_size_effective,
         resume_from_checkpoint=resume,
         gpus=gpus,
         num_nodes=nodes,
         accelerator=accelerator,
+        # strategy='ddp' if len(gpus) > 1 else None,
         precision=16 if conf.fp16 else 32,
         callbacks=callbacks,
         replace_sampler_ddp=True,

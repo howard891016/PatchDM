@@ -77,7 +77,7 @@ class BeatGANsUNetConfig(BaseConfig):
         return BeatGANsUNetModel(self)
 
 
-class BeatGANsUNetModel(nn.Module):
+class BeatGANsUNetModel(nn.Module): # Patchdm base model
     def __init__(self, conf: BeatGANsUNetConfig):
         super().__init__()
         self.conf = conf
@@ -98,7 +98,9 @@ class BeatGANsUNetModel(nn.Module):
             self.label_emb = nn.Embedding(conf.num_classes,
                                           conf.embed_channels)
 
-        ch = input_ch = int(conf.channel_mult[0] * conf.model_channels)
+
+        # channel_mult = [1,2,4,8], model_channels = 64
+        ch = input_ch = int(conf.channel_mult[0] * conf.model_channels) # ch = 64
         self.input_blocks = nn.ModuleList([
             TimestepEmbedSequential(
                 conv_nd(conf.dims, conf.in_channels, ch, 3, padding=1))
@@ -112,29 +114,31 @@ class BeatGANsUNetModel(nn.Module):
             cond_emb_channels=conf.resnet_cond_channels,
         )
 
-        self._feature_size = ch
+        self._feature_size = ch # 64
 
         # input_block_chans = [ch]
-        input_block_chans = [[] for _ in range(len(conf.channel_mult))]
-        input_block_chans[0].append(ch)
+        input_block_chans = [[] for _ in range(len(conf.channel_mult))] # [[],[],[],[]]
+        input_block_chans[0].append(ch) # [[ch],[],[],[]]
 
         # number of blocks at each resolution
-        self.input_num_blocks = [0 for _ in range(len(conf.channel_mult))]
-        self.input_num_blocks[0] = 1
-        self.output_num_blocks = [0 for _ in range(len(conf.channel_mult))]
+        self.input_num_blocks = [0 for _ in range(len(conf.channel_mult))] # [0,0,0,0]
+        self.input_num_blocks[0] = 1 # [1,0,0,0]
+        self.output_num_blocks = [0 for _ in range(len(conf.channel_mult))] # [0,0,0,0]
 
         ds = 1
         resolution = 64
+        # channel_mult = (1,2,4,8)
         for level, mult in enumerate(conf.input_channel_mult
                                      or conf.channel_mult):
+            # num_res_blocks = 2
             for _ in range(conf.num_input_res_blocks or conf.num_res_blocks):
                 layers = [
                     ResBlockConfig(
-                        ch,
-                        conf.embed_channels,
+                        ch, # 64
+                        conf.embed_channels, # 512
                         conf.dropout,
-                        out_channels=int(mult * conf.model_channels),
-                        dims=conf.dims,
+                        out_channels=int(mult * conf.model_channels), # model_channels = 64
+                        dims=conf.dims,# 2
                         use_checkpoint=conf.use_checkpoint,
                         **kwargs,
                     ).make_model()
@@ -164,7 +168,7 @@ class BeatGANsUNetModel(nn.Module):
                     TimestepEmbedSequential(
                         ResBlockConfig(
                             ch,
-                            conf.embed_channels,
+                            conf.embed_channels, # 512
                             conf.dropout,
                             out_channels=out_ch,
                             dims=conf.dims,

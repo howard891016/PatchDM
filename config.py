@@ -42,11 +42,13 @@ class TrainConfig(BaseConfig):
     batch_size: int = 16
     batch_size_eval: int = None
     beatgans_gen_type: GenerativeType = GenerativeType.ddim
+    # beatgans_loss_type: LossType = LossType.l1
     beatgans_loss_type: LossType = LossType.mse
     beatgans_model_mean_type: ModelMeanType = ModelMeanType.eps
     beatgans_model_var_type: ModelVarType = ModelVarType.fixed_large
     beatgans_rescale_timesteps: bool = False
     cfg: bool = False
+    # cfg: bool = True
     latent_infer_path: str = None
     latent_znormalize: bool = False
     latent_gen_type: GenerativeType = GenerativeType.ddim
@@ -73,8 +75,8 @@ class TrainConfig(BaseConfig):
     grad_clip: float = 1
     img_size: int = 64
     image_size: str = "(512,1024)"
-    # lr: float = 0.0001
-    lr: float = 0.00005
+    lr: float = 0.0001
+    # lr: float = 0.00005
     optimizer: OptimizerType = OptimizerType.adam
     weight_decay: float = 0
     model_conf: ModelConfig = None
@@ -138,7 +140,7 @@ class TrainConfig(BaseConfig):
     eval_programs: Tuple[str] = None
     # if present load the checkpoint from this path instead
     eval_path: str = None
-    base_dir: str = 'checkpoints'
+    base_dir: str = '/tmp2'
     use_cache_dataset: bool = False
     data_cache_dir: str = os.path.expanduser('~/cache')
     work_cache_dir: str = os.path.expanduser('~/mycache')
@@ -254,6 +256,11 @@ class TrainConfig(BaseConfig):
         if 'ffhq256' in self.data_path:
             return FFHQlmdb(path=path or self.data_path,
                             image_size=256,
+                            **kwargs)
+        if 'ffhq128' in self.data_path:
+            return FFHQlmdb(path=path or self.data_path,
+                            # image_size=128,
+                            image_size=64,
                             **kwargs)
         if 'ffhq64' in self.data_path:
             return FFHQlmdb(path=path or self.data_path,

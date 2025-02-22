@@ -102,9 +102,9 @@ class ResBlock(TimestepBlock):
         #############################
         assert conf.lateral_channels is None
         layers = [
-            normalization(conf.channels),
-            nn.SiLU(),
-            conv_nd(conf.dims, conf.channels, conf.out_channels, 3, padding=1)
+            normalization(conf.channels), # Group Norm
+            nn.SiLU(), 
+            conv_nd(conf.dims, conf.channels, conf.out_channels, 3, padding=1) # conv3x3
         ]
         self.in_layers = nn.Sequential(*layers)
 

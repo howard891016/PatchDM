@@ -39,9 +39,9 @@ def render_uncondition(conf: TrainConfig,
             noise=latent_noise,
             clip_denoised=conf.latent_clip_sample,
         )
-        print(type(cond))
-        print("cond size")
-        print(cond.shape)
+        # print(type(cond))
+        # print("cond size")
+        # print(cond.shape)
         print("---finish latent sample---")
         # print(cond)
         if conf.latent_znormalize:

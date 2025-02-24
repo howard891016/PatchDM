@@ -101,10 +101,11 @@ class ResBlock(TimestepBlock):
         # IN LAYERS
         #############################
         assert conf.lateral_channels is None
+        
         layers = [
             normalization(conf.channels), # Group Norm
             nn.SiLU(), 
-            conv_nd(conf.dims, conf.channels, conf.out_channels, 3, padding=1) # conv3x3
+            conv_nd(conf.dims, conf.channels, conf.out_channels, 3, padding=1, stride=1) # conv3x3 (conv2d)
         ]
         self.in_layers = nn.Sequential(*layers)
 
@@ -119,17 +120,23 @@ class ResBlock(TimestepBlock):
         else:
             self.h_upd = self.x_upd = nn.Identity()
 
+        # input layers = [
+        #     GroupNorm,
+        #     SiLU(),
+        #     conv3x3 (conv2d),
+        # ]
+
         #############################
         # OUT LAYERS CONDITIONS
         #############################
-        if conf.use_condition:
+        if conf.use_condition: # use_condition = true
             # condition layers for the out_layers
             self.emb_layers = nn.Sequential(
                 nn.SiLU(),
                 linear(conf.emb_channels, 2 * conf.out_channels),
             )
 
-            if conf.two_cond:
+            if conf.two_cond: # two_cond = false
                 self.cond_emb_layers = nn.Sequential(
                     nn.SiLU(),
                     linear(conf.cond_emb_channels, conf.out_channels),
@@ -143,12 +150,12 @@ class ResBlock(TimestepBlock):
                            conf.out_channels,
                            3,
                            padding=1)
-            if conf.use_zero_module:
+            if conf.use_zero_module: # use_zero_module = true
                 # zere out the weights
                 # it seems to help training
                 conv = zero_module(conv)
 
-            # construct the layers
+            # construct the layers (output)
             # - norm
             # - (modulation)
             # - act
@@ -162,7 +169,7 @@ class ResBlock(TimestepBlock):
                 conv,
             ]
             self.out_layers = nn.Sequential(*layers)
-
+            
         #############################
         # SKIP LAYERS
         #############################
@@ -170,7 +177,7 @@ class ResBlock(TimestepBlock):
             # cannot be used with gatedconv, also gatedconv is alsways used as the first block
             self.skip_connection = nn.Identity()
         else:
-            if conf.use_conv:
+            if conf.use_conv: # false
                 kernel_size = 3
                 padding = 1
             else:

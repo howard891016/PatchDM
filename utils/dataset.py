@@ -143,7 +143,7 @@ class FFHQlmdb(Dataset):
     def __init__(self,
                 #  path=os.path.expanduser('datasets/ffhq256.lmdb'),
                  path=os.path.expanduser('datasets/ffhq128_lmdb'),
-                 image_size=64,
+                 image_size=32,
                 #  original_resolution=64,
                  original_resolution=128,
                  split=None,

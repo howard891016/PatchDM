@@ -176,7 +176,7 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
             pos_random_old = pos_random.repeat_interleave(x.shape[0] // t.shape[0], dim=0)
             pos_emb = pos_emb * pos_random_old[:,None].to(pos_emb.device)
 
-        if self.conf.resnet_two_cond:
+        if self.conf.resnet_two_cond: # false (?)
             res = self.time_embed.forward(
                 time_emb=_t_emb,
                 cond=cond,

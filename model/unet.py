@@ -43,6 +43,7 @@ class BeatGANsUNetConfig(BaseConfig):
     time_embed_channels: int = None
     # dropout applies to the resblocks (on feature maps)
     dropout: float = 0.1
+    # channel_mult: Tuple[int] = (1, 2, 4, 8)
     channel_mult: Tuple[int] = (1, 2, 4, 8)
     input_channel_mult: Tuple[int] = None
     conv_resample: bool = True
@@ -92,9 +93,9 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
             linear(self.time_emb_channels, conf.embed_channels),
             nn.SiLU(),
             linear(conf.embed_channels, conf.embed_channels),
-        )
+        ) # time embedding layer
 
-        if conf.num_classes is not None:
+        if conf.num_classes is not None: # num_classes = None
             self.label_emb = nn.Embedding(conf.num_classes,
                                           conf.embed_channels)
 
@@ -108,7 +109,7 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
 
         kwargs = dict(
             use_condition=True,
-            two_cond=conf.resnet_two_cond,
+            two_cond=conf.resnet_two_cond, # false(?)
             use_zero_module=conf.resnet_use_zero_module,
             # style channels for the resnet block
             cond_emb_channels=conf.resnet_cond_channels,
@@ -127,17 +128,17 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
 
         ds = 1
         resolution = 64
-        # channel_mult = (1,2,4,8)
+        # channel_mult = (1,2,4,8) vs Slimflow.ch_mult = (1,2,2,2)
         for level, mult in enumerate(conf.input_channel_mult
                                      or conf.channel_mult):
-            # num_res_blocks = 2
+            # num_res_blocks = 2 vs Slimflow.num_res_blocks = 4
             for _ in range(conf.num_input_res_blocks or conf.num_res_blocks):
                 layers = [
                     ResBlockConfig(
-                        ch, # 64
-                        conf.embed_channels, # 512
+                        ch, # 64 vs Slimflow.ch = 128
+                        conf.embed_channels, # 512 vs Slimflow.temb_channel = 512 (ch*4)
                         conf.dropout,
-                        out_channels=int(mult * conf.model_channels), # model_channels = 64
+                        out_channels=int(mult * conf.model_channels), # model_channels = 64 vs Slimflow.model_channels = 128
                         dims=conf.dims,# 2
                         use_checkpoint=conf.use_checkpoint,
                         **kwargs,

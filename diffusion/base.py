@@ -133,12 +133,15 @@ class GaussianDiffusionBeatGans:
         if noise is None:
             noise = th.randn_like(x_start)
         
+        # print("patch size: " + str(patch_size))
+        # print("patch size: " + str(patch_size))
+
         halfp = patch_size // 2
         # print(t.shape)
-        # print(imgs.shape)
+        # print("img shape: " + str(imgs.shape))
         # # print(patch_size)
-        # T = 1.
-        # eps = 1e-3
+        T = 1.
+        eps = 1e-3
         # t = th.rand((x_start.shape[0],), device=t.device) * (T - eps) + eps
         t_cur = repeat(t, 'h -> (h repeat)',repeat =int(x_start.shape[0]/t.shape[0]))
         
@@ -146,8 +149,8 @@ class GaussianDiffusionBeatGans:
         # print(t_cur/1000)
         # print(1-(t_cur/1000+eps))
         # Modified: Find interpolation between clean data and noise
-        x_t = self.q_sample(x_start, t_cur, noise=noise)
-        # x_t = th.einsum('b,bijk->bijk', (t_cur/1000 + eps), x_start) + th.einsum('b,bijk->bijk', (1 - (t_cur/1000 + eps)), noise)
+        # x_t = self.q_sample(x_start, t_cur, noise=noise)
+        x_t = th.einsum('b,bijk->bijk', (t_cur/1000 + eps), x_start) + th.einsum('b,bijk->bijk', (1 - (t_cur/1000 + eps)), noise)
         # print("x_t: ")
         # print(x_t)
         
@@ -230,9 +233,9 @@ class GaussianDiffusionBeatGans:
 
             # Modified: Change the target
             target_types = {
-                # ModelMeanType.eps: {"shift": noise_target_shift - x_start_target_shift, "no_shift": noise_target_no_shift - x_start_no_shift},
+                ModelMeanType.eps: {"shift": noise_target_shift - x_start_target_shift, "no_shift": noise_target_no_shift - x_start_no_shift},
                 # ModelMeanType.eps: {"shift": x_start_target_shift - noise_target_shift, "no_shift": x_start_no_shift - noise_target_no_shift},
-                ModelMeanType.eps: {"shift": noise_target_shift, "no_shift":noise_target_no_shift},
+                # ModelMeanType.eps: {"shift": noise_target_shift, "no_shift":noise_target_no_shift},
             }
             target = target_types[self.model_mean_type]
             assert model_output_shift.shape == target["shift"].shape 

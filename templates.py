@@ -258,11 +258,11 @@ def bedroom256_autoenc():
 def train_autoenc():
     conf = ffhq64_autoenc()
     # conf.eval_every_samples = 2_000_000_000
-    conf.eval_every_samples = 2187 * 32 * 200
+    conf.eval_every_samples = 2187 * 32 * 500
     # conf.eval_ema_every_samples = 2_000_000_000
-    conf.eval_ema_every_samples = 2187 * 32 * 200
+    conf.eval_ema_every_samples = 2187 * 32 * 500
     # conf.total_samples = 2_000_000_000
-    conf.total_samples = 2187 * 32 * 200
+    conf.total_samples = 2187 * 32 * 500
     conf.name = 'train' # override
     conf.semantic_enc = False
     conf.cfg = False

@@ -788,11 +788,11 @@ def is_time(num_samples, every, step_size):
 def train(conf: TrainConfig, gpus, nodes=1, mode: str = 'train'):
     print('conf:', conf.name)
     model = LitModel(conf)  # 移動模型到對應的 GPU
-    # print(model)
-    # with open('./patch_dm_model_arch.txt', 'w', encoding='utf-8') as file:
-    #     print(model, file=file)
-    # import sys
-    # sys.exit()
+    print(model)
+    with open('./patch_dm_model_arch_modified.txt', 'w', encoding='utf-8') as file:
+        print(model, file=file)
+    import sys
+    sys.exit()
     callbacks = [LearningRateMonitor()]
 
     if conf.logdir and not os.path.exists(conf.logdir):

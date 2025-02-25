@@ -173,7 +173,7 @@ class ResBlock(TimestepBlock):
         #############################
         # SKIP LAYERS
         #############################
-        if conf.out_channels == conf.channels:
+        if conf.out_channels == conf.channels and self.updown == False:
             # cannot be used with gatedconv, also gatedconv is alsways used as the first block
             self.skip_connection = nn.Identity()
         else:

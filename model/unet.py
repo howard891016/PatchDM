@@ -20,7 +20,8 @@ class BeatGANsUNetConfig(BaseConfig):
     image_size: int = 64
     in_channels: int = 3
     # base channels, will be multiplied
-    model_channels: int = 64
+    # model_channels: int = 64 
+    model_channels: int = 128 # Patchdm channels = 64 -> Slimflow = 128
     # output of the unet
     # suggest: 3
     # you only need 6 if you also model the variance of the noise prediction (usually we use an analytical variance hence 3)
@@ -44,7 +45,7 @@ class BeatGANsUNetConfig(BaseConfig):
     # dropout applies to the resblocks (on feature maps)
     dropout: float = 0.1
     # channel_mult: Tuple[int] = (1, 2, 4, 8)
-    channel_mult: Tuple[int] = (1, 2, 4, 8)
+    channel_mult: Tuple[int] = (1, 2, 2, 2)
     input_channel_mult: Tuple[int] = None
     conv_resample: bool = True
     # always 2 = 2d conv
@@ -100,8 +101,8 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
                                           conf.embed_channels)
 
 
-        # channel_mult = [1,2,4,8], model_channels = 64
-        ch = input_ch = int(conf.channel_mult[0] * conf.model_channels) # ch = 64
+        # channel_mult = [1,2,4,8], model_channels = 64 -> channel_mult = [1,2,2,2], channels = 128
+        ch = input_ch = int(conf.channel_mult[0] * conf.model_channels) # ch = 64->128
         self.input_blocks = nn.ModuleList([
             TimestepEmbedSequential(
                 conv_nd(conf.dims, conf.in_channels, ch, 3, padding=1))
@@ -109,13 +110,13 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
 
         kwargs = dict(
             use_condition=True,
-            two_cond=conf.resnet_two_cond, # false(?)
+            two_cond=conf.resnet_two_cond, # false(?)->true
             use_zero_module=conf.resnet_use_zero_module,
             # style channels for the resnet block
             cond_emb_channels=conf.resnet_cond_channels,
         )
 
-        self._feature_size = ch # 64
+        self._feature_size = ch # 64->128
 
         # input_block_chans = [ch]
         input_block_chans = [[] for _ in range(len(conf.channel_mult))] # [[],[],[],[]]

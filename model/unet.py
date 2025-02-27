@@ -216,6 +216,9 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
         )
         self._feature_size += ch
 
+        # Modified: Add all resolution base one level
+        all_resolutions = [64 // (2 ** i) for i in range(len(conf.channel_mult))]
+
         self.output_blocks = nn.ModuleList([])
         for level, mult in list(enumerate(conf.channel_mult))[::-1]:
             for i in range(conf.num_res_blocks + 1):
@@ -244,8 +247,47 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
                     ).make_model()
                 ]
                 ch = int(conf.model_channels * mult)
-                if resolution in conf.attention_resolutions:
-                    layers.append(
+                # Modified: Move attention block append out from for loop
+                # if resolution in conf.attention_resolutions:
+                #     layers.append(
+                #         AttentionBlock(
+                #             ch,
+                #             use_checkpoint=conf.use_checkpoint
+                #             or conf.attn_checkpoint,
+                #             num_heads=self.num_heads_upsample,
+                #             num_head_channels=conf.num_head_channels,
+                #             use_new_attention_order=conf.
+                #             use_new_attention_order,
+                #         ))
+
+                # Modified: move add resblocks out from for loop
+                # if level and i == conf.num_res_blocks:
+                #     resolution *= 2
+                #     out_ch = ch
+                #     layers.append(
+                #         ResBlockConfig(
+                #             ch,
+                #             conf.embed_channels,
+                #             conf.dropout,
+                #             out_channels=out_ch,
+                #             dims=conf.dims,
+                #             use_checkpoint=conf.use_checkpoint,
+                #             up=True,
+                #             **kwargs,
+                #         ).make_model() if (
+                #             conf.resblock_updown
+                #         ) else Upsample(ch,
+                #                         conf.conv_resample,
+                #                         dims=conf.dims,
+                #                         out_channels=out_ch))
+                #     ds //= 2
+                self.output_blocks.append(TimestepEmbedSequential(*layers))
+                self.output_num_blocks[level] += 1
+                self._feature_size += ch
+            # Modified: attnblock move to here
+            if all_resolutions[level] in conf.attention_resolutions:
+                    self.output_blocks.append(
+                        TimestepEmbedSequential(
                         AttentionBlock(
                             ch,
                             use_checkpoint=conf.use_checkpoint
@@ -254,11 +296,13 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
                             num_head_channels=conf.num_head_channels,
                             use_new_attention_order=conf.
                             use_new_attention_order,
-                        ))
-                if level and i == conf.num_res_blocks:
+                        )))
+            # Modified: resblock move to here
+            if level and i == conf.num_res_blocks:
                     resolution *= 2
                     out_ch = ch
-                    layers.append(
+                    self.output_blocks.append(
+                        TimestepEmbedSequential(
                         ResBlockConfig(
                             ch,
                             conf.embed_channels,
@@ -273,12 +317,8 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
                         ) else Upsample(ch,
                                         conf.conv_resample,
                                         dims=conf.dims,
-                                        out_channels=out_ch))
+                                        out_channels=out_ch)))
                     ds //= 2
-                self.output_blocks.append(TimestepEmbedSequential(*layers))
-                self.output_num_blocks[level] += 1
-                self._feature_size += ch
-
         # print(input_block_chans)
         # print('inputs:', self.input_num_blocks)
         # print('outputs:', self.output_num_blocks)

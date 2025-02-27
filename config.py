@@ -73,7 +73,7 @@ class TrainConfig(BaseConfig):
     fid_use_torch: bool = True
     fp16: bool = False
     grad_clip: float = 1
-    img_size: int = 32
+    img_size: int = 64
     image_size: str = "(512,1024)"
     lr: float = 0.0001
     # lr: float = 0.00005
@@ -260,7 +260,7 @@ class TrainConfig(BaseConfig):
         if 'ffhq128' in self.data_path:
             return FFHQlmdb(path=path or self.data_path,
                             # image_size=128,
-                            image_size=32,
+                            image_size=64,
                             **kwargs)
         if 'ffhq64' in self.data_path:
             return FFHQlmdb(path=path or self.data_path,

@@ -788,8 +788,56 @@ def is_time(num_samples, every, step_size):
 def train(conf: TrainConfig, gpus, nodes=1, mode: str = 'train'):
     print('conf:', conf.name)
     model = LitModel(conf)  # 移動模型到對應的 GPU
-    print(model)
-    with open('./patch_dm_model_arch_modified.txt', 'w', encoding='utf-8') as file:
+    
+    cond_emb_params = 0
+    emb_params = 0
+    time_embed_params = 0
+    pos_embed_params = 0
+    semantic_enc_params = 0
+    unet_params = 0
+    attn_params = 0
+    for name, module in model.model.named_parameters():
+        print(name)
+    import sys
+    # sys.exit()
+    for name, module in model.model.named_parameters():
+        if "input_blocks.11.1." in name or "input_blocks.12.1." in name or "input_blocks.13.1." in name or "input_blocks.14.1." in name or \
+        "middle_block.1." in name or "output_blocks.5.1." in name or "output_blocks.6.1." in name or "output_blocks.7.1." in name or \
+        "output_blocks.8.1." in name or "output_blocks.9.1." in name:
+            attn_params = attn_params + module.numel()
+        if "input_blocks" in name or "middle_block" in name or "output_blocks" in name or \
+           "out.0" in name or "out.2" in name:
+            if "cond_emb_layers" in name:
+                cond_emb_params = cond_emb_params + module.numel()
+            elif "emb_layers" in name:
+                emb_params = emb_params + module.numel()
+            else:
+                unet_params = unet_params + module.numel()
+        elif "time_embed.time_embed" in name:
+            time_embed_params = time_embed_params + module.numel()
+        elif "time_embed.pos_embed" in name:
+            pos_embed_params = pos_embed_params + module.numel()
+        else:
+            semantic_enc_params = semantic_enc_params + module.numel()
+    total_params = cond_emb_params + emb_params + time_embed_params + pos_embed_params + semantic_enc_params + unet_params
+    print(f'total number of time_embed_params in the Model: {time_embed_params}')
+    print(f'total number of pos_embed_params in the Model: {pos_embed_params}')
+    print(f'total number of emb_params in the Model: {emb_params}')
+    print(f'total number of cond_emb_params in the Model: {cond_emb_params}')
+    print(f'total number of semantic_enc_params in the Model: {semantic_enc_params}')
+    print(f'total number of unet_params in the Model: {unet_params}')
+    print(f'total number of total_params in the Model: {total_params}')
+    # print(f'total number of attn_params in the Model: {attn_params}')
+
+    # print(f'unet without attn: {unet_params - attn_params}')
+    print("==============different calculate==============")
+
+    pytorch_total_grad_params = sum(p.numel() for p in model.model.parameters() if p.requires_grad)
+    print(f'total number of trainable parameters in the Model: {pytorch_total_grad_params}')
+    pytorch_total_params = sum(p.numel() for p in model.model.parameters())
+    print(f'total number of parameters in the Model: {pytorch_total_params}')
+    # print(model)
+    with open('./patch_dm_model_arch_modified_attn.txt', 'w', encoding='utf-8') as file:
         print(model, file=file)
     import sys
     sys.exit()

@@ -49,7 +49,8 @@ def autoenc_base():
     conf.eval_ema_every_samples = 200_000
     conf.eval_every_samples = 200_000
     conf.fp16 = True
-    conf.lr = 1e-4
+    # conf.lr = 1e-4
+    conf.lr = 0.00005
     conf.model_name = ModelName.beatgans_autoenc
     conf.net_attn = (16, )
     conf.net_beatgans_attn_head = 1
@@ -82,8 +83,13 @@ def ffhq64_autoenc():
     conf.data_name = 'ffhqlmdb128'
     conf.warmup = 0
     conf.total_samples = 72_000_000
+    conf.net_num_res_blocks = 4
+    conf.net_ch = 128
     conf.net_ch_mult = (1, 2, 4, 8)
+    # conf.net_ch_mult = (1, 2, 2, 2)
     conf.net_enc_channel_mult = (1, 2, 4, 8, 8)
+    # conf.net_enc_channel_mult = (1, 2, 2, 2)
+    # conf.net_attn = (16,)
     conf.eval_every_samples = 1_000_000
     conf.eval_ema_every_samples = 1_000_000
     conf.scale_up_gpus(4)
@@ -258,11 +264,11 @@ def bedroom256_autoenc():
 def train_autoenc():
     conf = ffhq64_autoenc()
     # conf.eval_every_samples = 2_000_000_000
-    conf.eval_every_samples = 2187 * 32 * 500
+    conf.eval_every_samples = 2187 * 32 * 900
     # conf.eval_ema_every_samples = 2_000_000_000
-    conf.eval_ema_every_samples = 2187 * 32 * 500
+    conf.eval_ema_every_samples = 2187 * 32 * 900
     # conf.total_samples = 2_000_000_000
-    conf.total_samples = 2187 * 32 * 500
+    conf.total_samples = 2187 * 32 * 900
     conf.name = 'train' # override
     conf.semantic_enc = False
     conf.cfg = False

@@ -57,10 +57,11 @@ if __name__ == '__main__':
         conf.net_enc_channel_mult = (1, 2, 2, 2)
     elif conf.patch_size == 32:
         conf.net_ch = 128  # 與 64x64 的基礎通道數相同，但可以減少為 32 作為備選
-        # conf.net_ch_mult = (1, 2, 4, 8)  # 確保層數與輸入大小匹配
-        conf.net_ch_mult = (1, 2, 2, 2)  # 確保層數與輸入大小匹配
+        conf.net_ch_mult = (1, 2, 4, 8)  # 確保層數與輸入大小匹配
+        # conf.net_ch_mult = (1, 2, 2, 2)  # 確保層數與輸入大小匹配
         conf.net_num_res_blocks = 4
-        conf.net_enc_channel_mult = (1, 2, 2, 2)  # 避免通道數倍增過大
+        # conf.net_enc_channel_mult = (1, 2, 2, 2)  # 避免通道數倍增過大
+        conf.net_enc_channel_mult = (1, 2, 4, 8, 8)
         conf.make_model_conf()
     else:
         raise NotImplementedError("Patch size not in [32,64,128,256]")

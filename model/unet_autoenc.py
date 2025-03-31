@@ -56,8 +56,10 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
             style_channels = conf.enc_out_channels
             self.sem_enc = True
         else:
+            conf.semantic_path = "semantic_pt_file"
             if conf.semantic_path == "":
                 self.encoder = None # Semantic(conf.data_num, initial_pt=None)
+                # self.encoder = Semantic(conf.data_num, initial_pt=conf.semantic_path) # Testing with cond=None
             else:
                 self.encoder = Semantic(conf.data_num, initial_pt=conf.semantic_path)
             style_channels = conf.enc_out_channels
@@ -135,19 +137,27 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
             noise: random noise (to predict the cond)
             random/pose_random: classifier free
         """
+        # print(f"cond vs model_kwargs['cond']: {cond == kwargs['cond']}")
+        # print(f"cond is None:  {cond == None}")
+        # print(kwargs.keys())
 
         if t_cond is None:
             t_cond = t
 
-        if noise is not None:
+        if noise is not None: # noise is not None.
+            print("noise is not None.")
             cond = self.noise_to_cond(noise)
-     
-        if cond is None:
-            if self.sem_enc:
+
+        # cond = None # Use when testing
+        if cond is None: # Training: cond is None.
+            # print("Cond is None in forward.")
+            if self.sem_enc: # Training: sem_enc is false.
+                # print("sem_enc == True")
                 cond = self.encode(imgs)["cond"]
             else:
+                # print("sem_enc == False")
                 cond = self.encoder.forward(idx)
-        if random is not None: # semantic code classifier free
+        if random is not None: # semantic code classifier free: false-> random = None
             random = random >= 0.1
             cond = cond * random[:,None].to(cond.device)
         cond_tmp = cond.clone()
@@ -155,8 +165,6 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
         H,W = imgs.shape[2:]
         patch_num_x = H // patch_size
         patch_num_y = W // patch_size
-        # patch_num_x = 2
-        # patch_num_y = 2
 
         if t is not None:
             t_cur = repeat(t,'h -> (h repeat)',repeat =int(x.shape[0]/t.shape[0]))
@@ -176,7 +184,7 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
             pos_random_old = pos_random.repeat_interleave(x.shape[0] // t.shape[0], dim=0)
             pos_emb = pos_emb * pos_random_old[:,None].to(pos_emb.device)
 
-        if self.conf.resnet_two_cond: # false (?)
+        if self.conf.resnet_two_cond: # True
             res = self.time_embed.forward(
                 time_emb=_t_emb,
                 cond=cond,

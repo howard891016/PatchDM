@@ -153,12 +153,13 @@ def generate(
                         img_size = (H,W),
                     ).cpu()
                     
+                    # batch_images = batch_images * 2. - 1.
                     batch_images = (batch_images + 1) / 2
                     batch_images = th.clamp(batch_images, 0., 1.)
                     # sampling_shape = (batch_size, 3, H, W)
-                    
-                    print("Min value:", batch_images.min().item())
-                    print("Max value:", batch_images.max().item())
+                    print("In generate(): ")
+                    print("     Min value:", batch_images.min().item())
+                    print("     Max value:", batch_images.max().item())
 
                     
                     # Modified: Get data pair

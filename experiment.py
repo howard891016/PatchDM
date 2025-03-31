@@ -36,11 +36,11 @@ from torch.utils.data.distributed import DistributedSampler
 import pytorch_lightning as pl
 from pytorch_lightning.plugins import DDPPlugin
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from transformers import TrainerCallback
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 torch.serialization.add_safe_globals([ModelCheckpoint])
-
 
 class LitModel(pl.LightningModule):
     def __init__(self, conf: TrainConfig):
@@ -465,7 +465,9 @@ class LitModel(pl.LightningModule):
                 idx = None
             else:
                 imgs = batch['img']
-                idx = batch["index"]
+                idx = batch["index"] # idx: [1,70000]
+                # print("idx:")
+                # print(idx)
                 self.log_sample(x_start = imgs, step = self.global_step, idx = idx)
 
     def on_before_optimizer_step(self, optimizer: Optimizer,
@@ -549,6 +551,15 @@ class LitModel(pl.LightningModule):
                                     cond = (cond + cond[i]) / 2
                             else:
                                 cond = None
+                        if cond is None:
+                            print("cond is None in log_sample.")
+                        else:
+                            print("cond is not None in log_sample.")
+                        # cond is None
+                        if all_pos is None:
+                            print("all_pos is None in log_sample.")
+                        else:
+                            print("all_pos is not None in log_sample.")
                         gen = self.eval_sampler.sample(model=model,
                                                        noise=None,
                                                        cond=cond,
@@ -796,51 +807,52 @@ def train(conf: TrainConfig, gpus, nodes=1, mode: str = 'train'):
     semantic_enc_params = 0
     unet_params = 0
     attn_params = 0
-    for name, module in model.model.named_parameters():
-        print(name)
-    import sys
+    # for name, module in model.model.named_parameters():
+    #     print(name)
+    # import sys
     # sys.exit()
-    for name, module in model.model.named_parameters():
-        if "input_blocks.11.1." in name or "input_blocks.12.1." in name or "input_blocks.13.1." in name or "input_blocks.14.1." in name or \
-        "middle_block.1." in name or "output_blocks.5.1." in name or "output_blocks.6.1." in name or "output_blocks.7.1." in name or \
-        "output_blocks.8.1." in name or "output_blocks.9.1." in name:
-            attn_params = attn_params + module.numel()
-        if "input_blocks" in name or "middle_block" in name or "output_blocks" in name or \
-           "out.0" in name or "out.2" in name:
-            if "cond_emb_layers" in name:
-                cond_emb_params = cond_emb_params + module.numel()
-            elif "emb_layers" in name:
-                emb_params = emb_params + module.numel()
-            else:
-                unet_params = unet_params + module.numel()
-        elif "time_embed.time_embed" in name:
-            time_embed_params = time_embed_params + module.numel()
-        elif "time_embed.pos_embed" in name:
-            pos_embed_params = pos_embed_params + module.numel()
-        else:
-            semantic_enc_params = semantic_enc_params + module.numel()
-    total_params = cond_emb_params + emb_params + time_embed_params + pos_embed_params + semantic_enc_params + unet_params
-    print(f'total number of time_embed_params in the Model: {time_embed_params}')
-    print(f'total number of pos_embed_params in the Model: {pos_embed_params}')
-    print(f'total number of emb_params in the Model: {emb_params}')
-    print(f'total number of cond_emb_params in the Model: {cond_emb_params}')
-    print(f'total number of semantic_enc_params in the Model: {semantic_enc_params}')
-    print(f'total number of unet_params in the Model: {unet_params}')
-    print(f'total number of total_params in the Model: {total_params}')
-    # print(f'total number of attn_params in the Model: {attn_params}')
+    # for name, module in model.model.named_parameters():
+    #     if "input_blocks.11.1." in name or "input_blocks.12.1." in name or "input_blocks.13.1." in name or "input_blocks.14.1." in name or \
+    #     "middle_block.1." in name or "output_blocks.5.1." in name or "output_blocks.6.1." in name or "output_blocks.7.1." in name or \
+    #     "output_blocks.8.1." in name or "output_blocks.9.1." in name:
+    #         attn_params = attn_params + module.numel()
+    #     if "input_blocks" in name or "middle_block" in name or "output_blocks" in name or \
+    #        "out.0" in name or "out.2" in name:
+    #         if "cond_emb_layers" in name:
+    #             cond_emb_params = cond_emb_params + module.numel()
+    #         elif "emb_layers" in name:
+    #             emb_params = emb_params + module.numel()
+    #         else:
+    #             unet_params = unet_params + module.numel()
+    #     elif "time_embed.time_embed" in name:
+    #         time_embed_params = time_embed_params + module.numel()
+    #     elif "time_embed.pos_embed" in name:
+    #         pos_embed_params = pos_embed_params + module.numel()
+    #     else:
+    #         semantic_enc_params = semantic_enc_params + module.numel()
+    # total_params = cond_emb_params + emb_params + time_embed_params + pos_embed_params + semantic_enc_params + unet_params
+    # print(f'total number of time_embed_params in the Model: {time_embed_params}')
+    # print(f'total number of pos_embed_params in the Model: {pos_embed_params}')
+    # print(f'total number of emb_params in the Model: {emb_params}')
+    # print(f'total number of cond_emb_params in the Model: {cond_emb_params}')
+    # print(f'total number of semantic_enc_params in the Model: {semantic_enc_params}')
+    # print(f'total number of unet_params in the Model: {unet_params}')
+    # print(f'total number of total_params in the Model: {total_params}')
+    # # print(f'total number of attn_params in the Model: {attn_params}')
 
-    # print(f'unet without attn: {unet_params - attn_params}')
-    print("==============different calculate==============")
+    # # print(f'unet without attn: {unet_params - attn_params}')
+    # print("==============different calculate==============")
 
-    pytorch_total_grad_params = sum(p.numel() for p in model.model.parameters() if p.requires_grad)
-    print(f'total number of trainable parameters in the Model: {pytorch_total_grad_params}')
-    pytorch_total_params = sum(p.numel() for p in model.model.parameters())
-    print(f'total number of parameters in the Model: {pytorch_total_params}')
-    # print(model)
-    with open('./patch_dm_model_arch_modified_attn.txt', 'w', encoding='utf-8') as file:
+    # pytorch_total_grad_params = sum(p.numel() for p in model.model.parameters() if p.requires_grad)
+    # print(f'total number of trainable parameters in the Model: {pytorch_total_grad_params}')
+    # pytorch_total_params = sum(p.numel() for p in model.model.parameters())
+    # print(f'total number of parameters in the Model: {pytorch_total_params}')
+    # # print(model)
+    with open('./patchdm_slimarch_patch_32_image_64.txt', 'w', encoding='utf-8') as file:
         print(model, file=file)
-    import sys
-    sys.exit()
+    # import sys
+    # sys.exit()
+    # best_checkpoint_callback = BestCheckpointCallback(save_path="./best_checkpoint")
     callbacks = [LearningRateMonitor()]
 
     if conf.logdir and not os.path.exists(conf.logdir):
@@ -851,6 +863,14 @@ def train(conf: TrainConfig, gpus, nodes=1, mode: str = 'train'):
                                  save_top_k=-1,
                                  every_n_train_steps=conf.save_every_samples //
                                  conf.batch_size_effective)
+        # checkpoint = ModelCheckpoint(
+        #     dirpath=f'{conf.logdir}',  # 儲存路徑
+        #     filename="best-{epoch:02d}-{loss:.4f}",  # 使用 loss 命名檔案
+        #     monitor="loss",  # 監控 validation loss
+        #     mode="min",  # 取最小的 loss
+        #     save_top_k=1,  # 只保留 loss 最低的 checkpoint
+        #     save_last=True  # 仍然保存最後一個 checkpoint
+        # )
         callbacks.append(checkpoint)
 
     if conf.full_model_path:
@@ -905,11 +925,20 @@ def train(conf: TrainConfig, gpus, nodes=1, mode: str = 'train'):
     elif mode == 'eval':
         dummy = DataLoader(TensorDataset(torch.tensor([0.] * conf.batch_size)),
                            batch_size=conf.batch_size)
+        
+        # for data in dummy:
+        #     print("data:")
+        #     print(data)
+
         eval_path = conf.eval_path or checkpoint_path
         print('loading from:', eval_path)
         state = torch.load(eval_path, map_location='cpu')
         print('step:', state['global_step'])
         model.load_state_dict(state['state_dict'],strict=False)
+        print("Mode is 'eval'.")
+        # import sys
+
+        # sys.exit()
         out = trainer.test(model, dataloaders=dummy)
         out = out[0]
         print(out)

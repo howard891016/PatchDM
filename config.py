@@ -16,11 +16,55 @@ from multiprocessing import get_context
 import os
 from utils.dataset_util import *
 from torch.utils.data.distributed import DistributedSampler
+from dataclasses import dataclass, field
+from typing import Dict, Any
+
+from LDM_Patch.ldm.util import instantiate_from_config
 
 @dataclass
 class PretrainConfig(BaseConfig):
     name: str
     path: str
+
+@dataclass
+class VaeConfig:
+    # 這裡的 target 和 params 就是您之前 .yaml 檔案裡的內容
+    target: str = "LDM_Patch.ldm.models.autoencoder.VQModelInterface"
+    params: Dict[str, Any] = field(default_factory=dict)
+    
+    # 我們新增一個欄位來專門指定 VAE 的權重檔路徑
+    ckpt_path: str = None 
+
+    def make_model(self):
+        """
+        根據設定，建立並載入 VAE 模型。
+        這就是新的 "make_model()" 用法。
+        """
+        # 使用我們熟悉的 instantiate_from_config 來建立模型結構
+        model = instantiate_from_config({'target': self.target, 'params': self.params})
+        
+        # 如果有指定權重檔，就載入權重
+        if self.ckpt_path:
+            print(f"正在從 '{self.ckpt_path}' 載入 VAE 權重...")
+            state_dict = torch.load(self.ckpt_path, map_location="cpu")["state_dict"]
+            
+            # 篩選出 VAE 的權重 (通常有 'first_stage_model.' 前綴)
+            vae_state_dict = {}
+            for key, value in state_dict.items():
+                if key.startswith("first_stage_model."):
+                    new_key = key[len("first_stage_model."):]
+                    vae_state_dict[new_key] = value
+            
+            # 如果篩選後有權重，就載入
+            if vae_state_dict:
+                model.load_state_dict(vae_state_dict, strict=False)
+            else:
+                print("警告：在權重檔中未找到 'first_stage_model.' 前綴的權重，嘗試直接載入...")
+                model.load_state_dict(state_dict, strict=False)
+        else:
+            print("警告：未提供 VAE ckpt_path，VAE 將使用隨機初始化的權重。")
+
+        return model
 
 @dataclass
 class TrainConfig(BaseConfig):
@@ -150,6 +194,12 @@ class TrainConfig(BaseConfig):
     data_path: str = ""
     backbone: str = ""
     disable_latent_diffusion: bool = False
+
+    # (Howard add) Add vae config
+    vae: VaeConfig = field(default_factory=VaeConfig)
+
+    def make_vae_conf(self) -> VaeConfig:
+        return self.vae
 
     def __post_init__(self):
         self.batch_size_eval = self.batch_size_eval or self.batch_size

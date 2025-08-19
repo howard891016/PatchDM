@@ -84,7 +84,35 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError("Patch size not in [32,64,128,256]")
 
-    
+    vae_conf = VaeConfig(
+        target="LDM_Patch.ldm.models.autoencoder.VQModelInterface",
+        params={
+            "embed_dim": 3,
+            "n_embed": 8192,
+            "ddconfig": {
+                "double_z": False,
+                "z_channels": 3,
+                "resolution": 256,
+                "in_channels": 3,
+                "out_ch": 3,
+                "ch": 128,
+                "ch_mult": [
+                    1,
+                    2,
+                    4
+                ],
+                "num_res_blocks": 2,
+                "attn_resolutions": [],
+                "dropout": 0.0
+            },
+            "lossconfig": {
+                "target": "nn.Identity",
+            }
+        }
+    )
+
+    conf.vae = vae_conf
+
     print("GPUS: " + str(gpus))
     train(conf, gpus=gpus)
 

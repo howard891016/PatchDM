@@ -1,7 +1,28 @@
 from templates import *
 from templates_latent import *
+import sys
+import os
 
 import argparse
+
+# --- 動態路徑設定開始 ---
+
+# 1. 獲取當前 train.py 檔案所在的目錄的絕對路徑
+#    例如：/workspace/PatchDM/
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 2. 根據當前目錄，組合出 LDM_Patch 子專案的絕對路徑
+#    例如：/workspace/PatchDM/LDM_Patch
+ldm_patch_path = os.path.join(current_dir, 'LDM_Patch')
+
+# 3. 檢查路徑是否存在，如果存在，就將它加入到 Python 的尋找路徑列表的最前面
+#    (加到最前面 insert(0, ...) 可以確保優先被找到)
+if os.path.exists(ldm_patch_path) and ldm_patch_path not in sys.path:
+    print(f"將子專案路徑加入到 sys.path: {ldm_patch_path}")
+    sys.path.insert(0, ldm_patch_path)
+
+# --- 動態路徑設定結束 ---
+
 
 if __name__ == '__main__':
 
@@ -85,7 +106,7 @@ if __name__ == '__main__':
         raise NotImplementedError("Patch size not in [32,64,128,256]")
 
     vae_conf = VaeConfig(
-        target="LDM_Patch.ldm.models.autoencoder.VQModelInterface",
+        target="ldm.models.autoencoder.VQModelInterface",
         params={
             "embed_dim": 3,
             "n_embed": 8192,
@@ -106,7 +127,7 @@ if __name__ == '__main__':
                 "dropout": 0.0
             },
             "lossconfig": {
-                "target": "nn.Identity",
+                "target": "torch.nn.Identity",
             }
         }
     )

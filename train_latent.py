@@ -17,10 +17,11 @@ if __name__ == '__main__':
     model_path = args.model_path
 
     conf = train_autoenc_latent()
-    gpus = [0]
+    gpus = [1]
     conf.sample_size = 1
     conf.semantic_enc = args.semantic_enc
     conf.latent_znormalize = False
+    conf.save_every_samples = 100_0000
     conf.pretrain = PretrainConfig(
         name='72M',
         path=model_path,

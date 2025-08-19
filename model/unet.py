@@ -146,17 +146,35 @@ class BeatGANsUNetModel(nn.Module): # Patchdm base model
                     ).make_model()
                 ]
                 ch = int(mult * conf.model_channels)
-                if resolution in conf.attention_resolutions:
+                # if resolution in conf.attention_resolutions:
+                #     layers.append(
+                #         AttentionBlock(
+                #             ch,
+                #             use_checkpoint=conf.use_checkpoint
+                #             or conf.attn_checkpoint,
+                #             num_heads=conf.num_heads,
+                #             num_head_channels=conf.num_head_channels,
+                #             use_new_attention_order=conf.
+                #             use_new_attention_order,
+                #         ))
+
+                # (Howard add) Modify attention resolution
+                if ds in conf.attention_resolutions:
+                    if conf.num_head_channels == -1:
+                        dim_head = ch // conf.num_heads
+                    else:
+                        conf.num_heads = ch // conf.num_head_channels
+                        dim_head = conf.num_head_channels
                     layers.append(
                         AttentionBlock(
                             ch,
                             use_checkpoint=conf.use_checkpoint
                             or conf.attn_checkpoint,
                             num_heads=conf.num_heads,
-                            num_head_channels=conf.num_head_channels,
-                            use_new_attention_order=conf.
-                            use_new_attention_order,
-                        ))
+                            num_head_channels=dim_head,
+                            use_new_attention_order=conf.use_new_attention_order,
+                        )
+                    )
                 self.input_blocks.append(TimestepEmbedSequential(*layers))
                 self._feature_size += ch
                 # input_block_chans.append(ch)

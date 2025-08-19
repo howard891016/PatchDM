@@ -37,7 +37,8 @@ def autoenc_base():
     base configuration for all Diff-AE models.
     """
     conf = TrainConfig()
-    conf.batch_size = 32
+    # conf.batch_size = 32
+    conf.batch_size = 64
     
     # change_code_note default:ddim
     conf.beatgans_gen_type = GenerativeType.ddpm
@@ -78,13 +79,13 @@ def ffhq64_ddpm():
 # Modified: Change dataset name
 def ffhq64_autoenc():
     conf = autoenc_base()
-    # conf.data_name = 'ffhqlmdb256'
+    conf.data_name = 'ffhqlmdb256'
     # conf.data_name = 'ffhqlmdb64'
-    conf.data_name = 'ffhqlmdb128'
+    # conf.data_name = 'ffhqlmdb128'
     conf.warmup = 0
     conf.total_samples = 72_000_000
-    conf.net_num_res_blocks = 4
-    conf.net_ch = 128
+    # conf.net_num_res_blocks = 4
+    # conf.net_ch = 128
     conf.net_ch_mult = (1, 2, 4, 8)
     # conf.net_ch_mult = (1, 2, 2, 2)
     conf.net_enc_channel_mult = (1, 2, 4, 8, 8)
@@ -263,12 +264,12 @@ def bedroom256_autoenc():
 
 def train_autoenc():
     conf = ffhq64_autoenc()
-    # conf.eval_every_samples = 2_000_000_000
-    conf.eval_every_samples = 2187 * 32 * 900
-    # conf.eval_ema_every_samples = 2_000_000_000
-    conf.eval_ema_every_samples = 2187 * 32 * 900
-    # conf.total_samples = 2_000_000_000
-    conf.total_samples = 2187 * 32 * 900
+    conf.eval_every_samples = 2_000_000_000
+    # conf.eval_every_samples = 2187 * 32 * 1300
+    conf.eval_ema_every_samples = 2_000_000_000
+    # conf.eval_ema_every_samples = 2187 * 32 * 1300
+    conf.total_samples = 2_000_000_000
+    # conf.total_samples = 2187 * 32 * 1300
     conf.name = 'train' # override
     conf.semantic_enc = False
     conf.cfg = False

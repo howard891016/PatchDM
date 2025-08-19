@@ -20,6 +20,10 @@ if __name__ == '__main__':
                         help='use semantic encoder')
     parser.add_argument('--znormalize', '-norm', action='store_true',
                         help='latent znormalize')
+    parser.add_argument('--backbone', type=str, default="unet",
+                        help='backbone') # TK add
+    parser.add_argument('--disable_latent_diffusion', action='store_true',
+                        help='use default semantic code instead of latent diffusion') # TK add
     args = parser.parse_args()
 
     gpus = [0]
@@ -33,11 +37,14 @@ if __name__ == '__main__':
     conf.sample_size = 1
     conf.train_mode = TrainMode.latent_diffusion
     conf.beatgans_gen_type = GenerativeType.ddim
-    conf.eval_programs = ['gen(50,50)']
+    conf.eval_programs = ['gen(50,100)']
     conf.semantic_enc = args.semantic_enc
     conf.latent_znormalize = args.znormalize
     conf.full_model_path = args.full_path
     conf.image_size = args.image_size
     conf.eval_num_images = args.img_num
     conf.name = ""
+
+    conf.backbone = args.backbone
+    conf.disable_latent_diffusion = args.disable_latent_diffusion
     train(conf, gpus=gpus, mode='eval')

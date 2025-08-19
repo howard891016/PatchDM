@@ -162,7 +162,7 @@ def train_autoenc_latent():
     conf.name = 'train_autoenc_latent'
     conf.continue_from = None
     conf.postfix = '_500M'
-    conf.total_samples = 60_000_000
+    conf.total_samples = 90_000_000
     conf.sample_every_samples = 100_000_000
     conf.latent_beta_scheduler = 'const0.008'
     conf.latent_loss_type = LossType.l1

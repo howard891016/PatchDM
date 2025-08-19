@@ -149,8 +149,8 @@ class GaussianDiffusionBeatGans:
         # print(t_cur/1000)
         # print(1-(t_cur/1000+eps))
         # Modified: Find interpolation between clean data and noise
-        # x_t = self.q_sample(x_start, t_cur, noise=noise)
-        x_t = th.einsum('b,bijk->bijk', ((t_cur/1000 + eps)), x_start) + th.einsum('b,bijk->bijk', 1 - (t_cur/1000 + eps), noise)
+        x_t = self.q_sample(x_start, t_cur, noise=noise)
+        # x_t = th.einsum('b,bijk->bijk', ((t_cur/1000 + eps)), x_start) + th.einsum('b,bijk->bijk', 1 - (t_cur/1000 + eps), noise)
         # print("x_t: ")
         # print(x_t)
 
@@ -231,8 +231,8 @@ class GaussianDiffusionBeatGans:
             # Modified: Change the target
             target_types = {
                 # ModelMeanType.eps: {"shift": noise_target_shift - x_start_target_shift, "no_shift": noise_target_no_shift - x_start_no_shift},
-                ModelMeanType.eps: {"shift": x_start_target_shift - noise_target_shift, "no_shift": x_start_no_shift - noise_target_no_shift},
-                # ModelMeanType.eps: {"shift": noise_target_shift, "no_shift":noise_target_no_shift},
+                # ModelMeanType.eps: {"shift": x_start_target_shift - noise_target_shift, "no_shift": x_start_no_shift - noise_target_no_shift},
+                ModelMeanType.eps: {"shift": noise_target_shift, "no_shift":noise_target_no_shift},
             }
             target = target_types[self.model_mean_type]
             assert model_output_shift.shape == target["shift"].shape 
@@ -245,6 +245,7 @@ class GaussianDiffusionBeatGans:
             
             # lpips_fn = lpips.LPIPS(net='vgg').to(x_t.device)
             
+            # print(f"LossType: {self.loss_type}")
             if self.loss_type == LossType.mse:
                 if self.model_mean_type == ModelMeanType.eps:
                     # (n, c, h, w) => (n, )
@@ -295,7 +296,7 @@ class GaussianDiffusionBeatGans:
         # Modified: Find interpolation between clean data and noise
         x_t = self.q_sample(x_start, t, noise=noise)
         # x_t = th.einsum('b,bijk->bijk', t, x_start) + th.einsum('b,bijk->bijk', (1 - t), noise)
-        x_t = (t / 1000) * x_start + (1 - (t / 1000)) * noise
+        # x_t = (t / 1000) * x_start + (1 - (t / 1000)) * noise
         # print(t/1000)
         # print(1 - t/1000)
         
@@ -315,8 +316,8 @@ class GaussianDiffusionBeatGans:
 
             # Modified: Change the target
             target_types = {
-                # ModelMeanType.eps: noise,
-                ModelMeanType.eps: x_start - noise,
+                ModelMeanType.eps: noise,
+                # ModelMeanType.eps: x_start - noise,
                 # ModelMeanType.eps: noise - x_start,
             }
             target = target_types[self.model_mean_type]
@@ -368,12 +369,22 @@ class GaussianDiffusionBeatGans:
                 model_kwargs['x_start'] = x_start
                 model_kwargs['imgs'] = imgs
                 model_kwargs['cond'] = cond
-                if cond is None: 
+                if cond is None: # here
                     print("cond is None in sample.")
                 else:
                     print("cond is not None in sample.")
 
-        if self.conf.gen_type == GenerativeType.ddpm:
+        # log_sample => ddpm
+        if self.conf.gen_type == GenerativeType.ddpm: 
+            # img = self.ddim_sample_loop(model,
+            #                              shape=shape,
+            #                              noise=noise,
+            #                              pos=all_pos,
+            #                              idx=idx, # New added
+            #                              clip_denoised=clip_denoised,
+            #                              model_kwargs=model_kwargs,
+            #                              progress=progress)
+            # return img
             return self.p_sample_loop(model,
                                       shape=shape,
                                       noise=noise,
@@ -1064,20 +1075,7 @@ class GaussianDiffusionBeatGans:
         Same usage as p_sample_loop().
         """
         final = None
-        img = self.ODE_sample_latent_loop_progressive(
-                model,
-                shape,
-                noise=noise,
-                clip_denoised=clip_denoised,
-                denoised_fn=denoised_fn,
-                cond_fn=cond_fn,
-                model_kwargs=model_kwargs,
-                device=device,
-                progress=progress,
-                eta=eta,
-        )
-        return img
-        # for sample in self.ddim_sample_latent_loop_progressive(
+        # img = self.ODE_sample_latent_loop_progressive(
         #         model,
         #         shape,
         #         noise=noise,
@@ -1088,9 +1086,22 @@ class GaussianDiffusionBeatGans:
         #         device=device,
         #         progress=progress,
         #         eta=eta,
-        # ):
-        #     final = sample
-        # return final["sample"]
+        # )
+        # return img
+        for sample in self.ddim_sample_latent_loop_progressive(
+                model,
+                shape,
+                noise=noise,
+                clip_denoised=clip_denoised,
+                denoised_fn=denoised_fn,
+                cond_fn=cond_fn,
+                model_kwargs=model_kwargs,
+                device=device,
+                progress=progress,
+                eta=eta,
+        ):
+            final = sample
+        return final["sample"]
     
     def ODE_sample_latent_loop_progressive(
         self,
@@ -1234,37 +1245,37 @@ class GaussianDiffusionBeatGans:
         """
         
         final = None
-        img = self.ODE_sample_loop_progressive(
-            model,
-            shape,
-            noise=noise,
-            pos=pos,
-            clip_denoised=clip_denoised,
-            idx=idx, # New added
-            denoised_fn=denoised_fn,
-            cond_fn=cond_fn,
-            model_kwargs=model_kwargs,
-            device=device,
-            progress=progress,
-            eta=eta,
-        )
-        return img
-        # for sample in self.ddim_sample_loop_progressive(
-        #         model,
-        #         shape,
-        #         noise=noise,
-        #         pos=pos,
-        #         idx=idx,
-        #         clip_denoised=clip_denoised,
-        #         denoised_fn=denoised_fn,
-        #         cond_fn=cond_fn,
-        #         model_kwargs=model_kwargs,
-        #         device=device,
-        #         progress=progress,
-        #         eta=eta,
-        # ):
-        #     final = sample
-        # return final["sample"]
+        # img = self.ODE_sample_loop_progressive(
+        #     model,
+        #     shape,
+        #     noise=noise,
+        #     pos=pos,
+        #     clip_denoised=clip_denoised,
+        #     idx=idx, # New added
+        #     denoised_fn=denoised_fn,
+        #     cond_fn=cond_fn,
+        #     model_kwargs=model_kwargs,
+        #     device=device,
+        #     progress=progress,
+        #     eta=eta,
+        # )
+        # return img
+        for sample in self.ddim_sample_loop_progressive(
+                model,
+                shape,
+                noise=noise,
+                pos=pos,
+                idx=idx,
+                clip_denoised=clip_denoised,
+                denoised_fn=denoised_fn,
+                cond_fn=cond_fn,
+                model_kwargs=model_kwargs,
+                device=device,
+                progress=progress,
+                eta=eta,
+        ):
+            final = sample
+        return final["sample"]
         
     def ODE_sample_loop_progressive(
         self,
@@ -1289,10 +1300,14 @@ class GaussianDiffusionBeatGans:
         """
         if device is None:
             device = next(model.parameters()).device
-        
+        if shapes is None:
+            shapes = model_kwargs['imgs'].shape
         img = th.randn(shapes, device=device)
         b,c,H,W = shapes
-        patch_size = noise.shape[2]
+        if noise is None:
+            patch_size = 64
+        else:
+            patch_size = noise.shape[2]
         halfp = patch_size // 2
         patch_num_x = H // patch_size
         patch_num_y = W // patch_size
@@ -1321,8 +1336,11 @@ class GaussianDiffusionBeatGans:
             
         # print("indices:" + str(indices))
         steps = 0
-        test_idx = th.randint(1, 2, (shapes[0],), device=device)
-        def ode_func(t, x, model, shapes, patch_size, model_kwargs, device, test_idx):
+        
+        # test_idx = th.randint(1, 5000, (shapes[0],), device=device)
+            
+        # print("test_idx: " + str(test_idx))
+        def ode_func(t, x, model, shapes, patch_size, model_kwargs, device):
             x = from_flattened_numpy(x, shapes).to(device).type(th.float32)
             vec_t = th.ones(shapes[0], device=x.device) * t
             halfp = patch_size // 2
@@ -1336,6 +1354,7 @@ class GaussianDiffusionBeatGans:
             # print("test_idx: " + str(test_idx))
             # print("idx: " + str(idx)) 
             # model_kwargs["cond"] = None
+            
             # print("Model kwargs: " + str(model_kwargs["cond"]))
             # sys.exit()
             # print("steps: " + str(steps))
@@ -1351,23 +1370,18 @@ class GaussianDiffusionBeatGans:
             drift_padded = rearrange(drift_patches, '(b p1 p2) c h w -> b c (p1 h) (p2 w)', p1 = patch_num_x, p2 = patch_num_y)
             
             # reverse = -drift_padded
-            # The BEST now:
-            
-            # mean = drift_padded.mean(dim=(1, 2, 3), keepdim=True)
-            # std = drift_padded.std(dim=(1, 2, 3), keepdim=True)
-            # drift_padded = (drift_padded - mean) / (std + 1e-5)  # 避免除零
-            
             return to_flattened_numpy(drift_padded)
         # test_idx = th.randint(1, 70000, (shapes[0],), device=img.device)
         def ode(t, x):
-            return ode_func(t, x, model, shapes, patch_size, model_kwargs, device, test_idx)
+            return ode_func(t, x, model, shapes, patch_size, model_kwargs, device)
         
         
         
         T = 1.
         eps = 1e-3
      
-        rtol = atol = 1e-6
+        rtol = atol = 1e-5
+
         
         solution = integrate.solve_ivp(ode, (eps, T), to_flattened_numpy(img),
                                             rtol=rtol, atol=atol, method='RK45')

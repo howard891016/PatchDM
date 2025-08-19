@@ -62,7 +62,7 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
                 # self.encoder = Semantic(conf.data_num, initial_pt=conf.semantic_path) # Testing with cond=None
             else:
                 self.encoder = Semantic(conf.data_num, initial_pt=conf.semantic_path)
-            style_channels = conf.enc_out_channels
+            style_channels = conf.enc_out_channels # 512
             self.sem_enc = False
         
         self.time_embed = TimeStyleSeperateEmbed(
@@ -151,13 +151,13 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
         # cond = None # Use when testing
         if cond is None: # Training: cond is None.
             # print("Cond is None in forward.")
-            if self.sem_enc: # Training: sem_enc is false.
+            if self.sem_enc: # Training: sem_enc is true.
                 # print("sem_enc == True")
                 cond = self.encode(imgs)["cond"]
             else:
                 # print("sem_enc == False")
                 cond = self.encoder.forward(idx)
-        if random is not None: # semantic code classifier free: false-> random = None
+        if random is not None: # Training: semantic code classifier free = true-> random = None
             random = random >= 0.1
             cond = cond * random[:,None].to(cond.device)
         cond_tmp = cond.clone()

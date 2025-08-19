@@ -75,8 +75,8 @@ class TrainConfig(BaseConfig):
     grad_clip: float = 1
     img_size: int = 64
     image_size: str = "(512,1024)"
-    lr: float = 0.0005
-    # lr: float = 0.00005
+    # lr: float = 0.0001
+    lr: float = 0.000005
     optimizer: OptimizerType = OptimizerType.adam
     weight_decay: float = 0
     model_conf: ModelConfig = None
@@ -127,7 +127,7 @@ class TrainConfig(BaseConfig):
     postfix: str = ''
     sample_size: int = 64
     sample_every_samples: int = 125_000
-    save_every_samples: int = 100_000
+    save_every_samples: int = 100_00
     semantic_enc: bool = False
     style_ch: int = 512
     T_eval: int = 1_000
@@ -148,6 +148,8 @@ class TrainConfig(BaseConfig):
     name: str = 'exp'
     output_dir: str = f'{work_cache_dir}/gen_images/{name}'
     data_path: str = ""
+    backbone: str = ""
+    disable_latent_diffusion: bool = False
 
     def __post_init__(self):
         self.batch_size_eval = self.batch_size_eval or self.batch_size
@@ -253,6 +255,10 @@ class TrainConfig(BaseConfig):
         return self._make_latent_diffusion_conf(T=self.latent_T_eval)
 
     def make_dataset(self, path=None, **kwargs):
+        if 'ffhq_encode' in self.data_path:
+            return LatentTensorDataset(path=path or self.data_path,
+                            image_size=64,
+                            **kwargs)
         if 'ffhq256' in self.data_path:
             return FFHQlmdb(path=path or self.data_path,
                             image_size=256,

@@ -20,7 +20,7 @@ def render_uncondition(conf: TrainConfig,
     patch_num_y = W // patch_size
     B = len(x_T)//patch_num_x//patch_num_y
     # print("here")
-    print("")
+    # print("")
     if conf.train_mode == TrainMode.diffusion:
         assert conf.model_type.can_sample()
         return sampler.sample(model=model, noise=x_T)
@@ -50,6 +50,7 @@ def render_uncondition(conf: TrainConfig,
 
         # the diffusion on the model
         print("---sample---")
+        # x_T = Gausian noise
         img = sampler.sample(model=model, noise=x_T, cond=cond, all_pos=all_pos, patch_size=patch_size, shape=(B,3,H,W))
         print("---finish sample---")
         # print("Min value:", img.min().item())

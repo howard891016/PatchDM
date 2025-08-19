@@ -9,6 +9,7 @@ from torchvision import transforms
 from torchvision.datasets import CIFAR10, LSUNClass
 import torch
 import pandas as pd
+import glob
 
 import torchvision.transforms.functional as Ftrans
 
@@ -68,6 +69,52 @@ class ImageDataset(Dataset):
             img = self.transform(img)
         return {'img': img, 'index': index}
 
+# Howard add ffhq256_encode dataset
+class LatentTensorDataset(Dataset):
+    def __init__(self, path, image_size=64, split=None):
+        """
+        latents_folder_path: 存放 .pt 檔案的資料夾路徑 (例如 'ffhq256_latents_pt')
+        """
+        
+        # 使用 glob 取得所有 .pt 檔案的路徑列表，並排序確保順序正確
+        self.file_paths = sorted(glob.glob(os.path.join(path, "*.pt")))
+        self.length = len(self.file_paths)
+        if split is None:
+            self.offset = 0
+        elif split == 'train':
+            # last 60k
+            self.length = self.length - 10000
+            self.offset = 10000
+        elif split == 'test':
+            # first 10k
+            self.length = 10000
+            self.offset = 0
+        else:
+            raise NotImplementedError()
+        print(f"Found {len(self.file_paths)} latent files.")
+
+    def __len__(self):
+        #回傳資料集的總長度
+        return len(self.file_paths)
+
+    def __getitem__(self, idx):
+        # 根據索引取得檔案路徑
+        assert idx < len(self.file_paths), f"Index {idx} out of range for dataset with length {len(self.file_paths)}"
+        path = self.file_paths[idx]
+        # 讀取 .pt 檔案，直接得到 tensor
+        latent_tensor = torch.load(path)
+        idx = idx + self.offset  # 如果有 offset，則加上 offset
+        # print(f"latent max: {latent_tensor.max()}, latent min: {latent_tensor.min()}")
+        
+        # Diffusion Model 通常需要 -1 到 1 之間的輸入
+        # 您需要根據您 Autoencoder 的輸出範圍來決定是否需要做縮放
+        # 例如，如果您的 VAE 輸出範圍本來就在 -1 到 1 附近，可能不需處理
+        # 如果不是，您可能需要一個固定的、可逆的縮放，例如除以一個常數
+        # latent_tensor = latent_tensor * some_scaling_factor 
+        # (這個 scaling_factor 需要先對整個資料集統計得出，且在生成時要逆運算)
+        # 不過，很多 VAE 的輸出本身就是一個正規化的高斯分佈，可以直接使用。
+        
+        return {'img': latent_tensor, 'index': idx}
 
 class SubsetDataset(Dataset):
     def __init__(self, dataset, size):
@@ -141,11 +188,11 @@ def make_transform(
 # Modified: Change dataset img size
 class FFHQlmdb(Dataset):
     def __init__(self,
-                #  path=os.path.expanduser('datasets/ffhq256.lmdb'),
-                 path=os.path.expanduser('datasets/ffhq128_lmdb'),
-                 image_size=32,
+                 path=os.path.expanduser('datasets/ffhq256.lmdb'),
+                #  path=os.path.expanduser('datasets/ffhq128_lmdb'),
+                 image_size=256,
                 #  original_resolution=64,
-                 original_resolution=128,
+                 original_resolution=256,
                  split=None,
                  as_tensor: bool = True,
                  do_augment: bool = False,

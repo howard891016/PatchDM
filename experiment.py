@@ -42,6 +42,31 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 torch.serialization.add_safe_globals([ModelCheckpoint])
 
+class ExponentialDecayWithMinLR:
+    """
+    一個 callable class，用於 LambdaLR。
+    實現從初始學習率開始的指數衰減，直到達到一個指定的最小學習率為止。
+    """
+    def __init__(self, initial_lr, min_lr, gamma):
+        self.initial_lr = initial_lr
+        self.min_lr = min_lr
+        self.gamma = gamma
+        # 預先計算出學習率達到下限時，對應的乘法因子是多少
+        # factor = current_lr / initial_lr
+        self.factor_floor = min_lr / initial_lr
+
+    def __call__(self, step):
+        """
+        在每一步計算學習率的乘法因子。
+        step 是指衰減階段開始後的步數（從 0 開始）。
+        """
+        # 計算當前步數的指數衰減因子
+        decay_factor = self.gamma ** step
+        
+        # 回傳「衰減因子」和「下限因子」中較大的一個
+        # 這樣可以確保因子不會低於下限因子，從而鎖定學習率
+        return max(decay_factor, self.factor_floor)
+
 class LitModel(pl.LightningModule):
     def __init__(self, conf: TrainConfig):
         super().__init__()
@@ -68,7 +93,7 @@ class LitModel(pl.LightningModule):
 
         # this is shared for both model and latent
         self.T_sampler = conf.make_T_sampler()
-
+        self.scale_factor = 1.0
         if conf.train_mode.use_latent_net():
             self.latent_sampler = conf.make_latent_diffusion_conf(
             ).make_sampler()
@@ -184,7 +209,8 @@ class LitModel(pl.LightningModule):
                 model = self.model
             gen = self.eval_sampler.sample(model=model,
                                            noise=noise,
-                                           x_start=x_start)
+                                           x_start=x_start,
+                                           clip_denoised=False) # (Howard add) clip_denoised=False for LDM
             return gen
 
     def setup(self, stage=None) -> None:
@@ -248,7 +274,7 @@ class LitModel(pl.LightningModule):
         if latent mode => return the inferred latent dataset
         """
         print('on train dataloader start ...')
-        if self.conf.train_mode.require_dataset_infer():
+        if self.conf.train_mode.require_dataset_infer(): # (Howard add) Only when latent_diffusion or manipulate mode
             if self.conds is None:
                 # usually we load self.conds from a file
                 # so we do not need to do this again!
@@ -387,6 +413,8 @@ class LitModel(pl.LightningModule):
                         self.device)) / self.conds_std.to(self.device)
             else:
                 imgs_ori, idxs = batch['img'], batch['index']
+                imgs_ori = self.scale_factor * imgs_ori
+                # print(f"Scale_factor: {self.scale_factor}")
                 patch_size = self.patch_size
                 halfp = patch_size // 2
                 H,W = imgs_ori.shape[2:]
@@ -438,6 +466,9 @@ class LitModel(pl.LightningModule):
                 if key in losses:
                     losses[key] = self.all_gather(losses[key]).mean()
 
+            if self.current_epoch >= 300:  # 冷卻期條件
+                self.log("train_loss", loss, prog_bar=True, on_epoch=True)
+
             if self.global_rank == 0:
                 self.logger.experiment.add_scalar('loss', losses['loss'],
                                                   self.num_samples)
@@ -447,6 +478,17 @@ class LitModel(pl.LightningModule):
                             f'loss/{key}', losses[key], self.num_samples)
 
         return {'loss': loss}
+    
+    def on_train_batch_start(self, batch, batch_idx: int, dataloader_idx) -> None:
+        if self.current_epoch == 0 and self.global_step == 0:
+            z = batch['img']
+            
+            
+            new_scale = 1. / z.flatten().std()
+            del self.scale_factor
+            self.register_buffer('scale_factor', new_scale)
+            # self.scale_factor = new_scale
+            print(f"New scale factor: {self.scale_factor}")
 
     def on_train_batch_end(self, outputs, batch, batch_idx: int,
                            dataloader_idx: int) -> None:
@@ -535,7 +577,7 @@ class LitModel(pl.LightningModule):
                             latent_sampler=self.eval_latent_sampler,
                             conds_mean=self.conds_mean,
                             conds_std=self.conds_std)
-                    else:
+                    else: # run here
                         if not use_xstart and self.conf.model_type.has_noise_to_cond(
                         ):
                             model: BeatGANsAutoencModel
@@ -558,17 +600,41 @@ class LitModel(pl.LightningModule):
                         # cond is None
                         if all_pos is None:
                             print("all_pos is None in log_sample.")
-                        else:
+                        else: # here
                             print("all_pos is not None in log_sample.")
+                        if _xstart is None:
+                            print("_xstart is None in log_sample.")
+                        else: # here
+                            print("_xstart is not None in log_sample.")
+                            print("_xstart shape: " + str(_xstart.shape))
+                            print("_idx shape: " + str(_idx.shape))
+                            print("_idx: " + str(_idx))
+                        # import sys
+                        # sys.exit()
                         gen = self.eval_sampler.sample(model=model,
                                                        noise=None,
-                                                       cond=cond,
+                                                       cond=cond, # None
                                                        x_start=_xstart,
                                                        imgs=imgs,
                                                        all_pos=all_pos,
                                                        idx = _idx,
                                                        patch_size = self.patch_size,
+                                                       clip_denoised=False, # (Howard add) clip_denoised=False for LDM
                                                        )
+                        sample_dir = os.path.join(self.conf.logdir,
+                                              f'sample_latent')
+                        if not os.path.exists(sample_dir):
+                            os.makedirs(sample_dir)
+                        
+                        
+                        # 建立唯一的檔名，這是避免多 GPU 衝突的關鍵！
+                        # self.global_rank 會是 0, 1, 2...
+                        filename = f"generated_epoch-{self.current_epoch:04d}.pt"
+                        save_path = os.path.join(sample_dir, filename)
+
+                        # 儲存 .pt 檔案 (使用 .cpu() 是好習慣)
+                        print(f"gen max: {gen.max()}, gen min: {gen.min()}")
+                        torch.save(gen.cpu(), save_path)
                     Gen.append(gen)
 
                 gen = torch.cat(Gen)
@@ -657,7 +723,24 @@ class LitModel(pl.LightningModule):
                 'scheduler': sched,
                 'interval': 'step',
             }
+
+        decay_scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optim,
+            lr_lambda=ExponentialDecayWithMinLR(
+                initial_lr=self.conf.lr,
+                min_lr=self.conf.min_lr,
+                gamma=self.conf.lr_decay_gamma
+            )
+        )
+
+        out['lr_scheduler'] = {
+            'scheduler': decay_scheduler,
+            'interval': 'step',
+            'frequency': 1,
+        }
+
         return out
+        # return [optim], schedulers
 
     def split_tensor(self, x):
         """
@@ -848,7 +931,7 @@ def train(conf: TrainConfig, gpus, nodes=1, mode: str = 'train'):
     # pytorch_total_params = sum(p.numel() for p in model.model.parameters())
     # print(f'total number of parameters in the Model: {pytorch_total_params}')
     # # print(model)
-    with open('./patchdm_slimarch_patch_32_image_64.txt', 'w', encoding='utf-8') as file:
+    with open('./LDM_PatchDM_with_LDM_arch.txt', 'w', encoding='utf-8') as file:
         print(model, file=file)
     # import sys
     # sys.exit()

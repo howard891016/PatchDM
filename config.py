@@ -29,7 +29,7 @@ class PretrainConfig(BaseConfig):
 @dataclass
 class VaeConfig:
     # 這裡的 target 和 params 就是您之前 .yaml 檔案裡的內容
-    target: str = "LDM_Patch.ldm.models.autoencoder.VQModelInterface"
+    target: str = "ldm.models.autoencoder.VQModelInterface"
     params: Dict[str, Any] = field(default_factory=dict)
     
     # 我們新增一個欄位來專門指定 VAE 的權重檔路徑

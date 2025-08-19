@@ -82,6 +82,13 @@ class LitModel(pl.LightningModule):
         self.ema_model.requires_grad_(False)
         self.ema_model.eval()
 
+        # (Hwoard add) Initialize VAE
+        print("--- 正在初始化 VAE (first_stage_model) ---")
+        self.vae = conf.make_vae_conf().make_model()
+        self.vae.requires_grad_(False)
+        self.vae.eval()
+        print("--- VAE 初始化完成 ---")
+
         model_size = 0
         for param in self.model.parameters():
             model_size += param.data.nelement()

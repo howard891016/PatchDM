@@ -13,6 +13,7 @@ from numpy.lib.function_base import flip
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks import *
 from torch import nn
+import torch.nn as nn
 from torch.cuda import amp
 from torch.distributions import Categorical
 from torch.optim.optimizer import Optimizer
@@ -82,7 +83,7 @@ class LitModel(pl.LightningModule):
         self.ema_model.requires_grad_(False)
         self.ema_model.eval()
 
-        # (Hwoard add) Initialize VAE
+        # (Howard add) Add VaE model
         print("--- 正在初始化 VAE (first_stage_model) ---")
         self.vae = conf.make_vae_conf().make_model()
         self.vae.requires_grad_(False)

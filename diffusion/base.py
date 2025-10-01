@@ -40,6 +40,7 @@ class GaussianDiffusionBeatGansConfig(BaseConfig):
     fp16: bool
     train_pred_xstart_detach: bool = True
     cfg: bool = True
+    whole_patch: bool = False # (Howard add) whether use whole patch to train the model
 
     def make_sampler(self):
         return GaussianDiffusionBeatGans(self)
@@ -164,20 +165,32 @@ class GaussianDiffusionBeatGans:
 
         terms = {'x_t': x_t}
 
-        index_x = random.randrange(pos.shape[0]-1)
-        index_y = random.randrange(pos.shape[1]-1)
-        index = [index_x, index_y]
-        index = th.tensor(index, device = 'cuda')
-        pos = pos[index_x:index_x+2, index_y:index_y+2].flatten(0,1).repeat(idx.shape[0], 1)
-        x_t = x_t[:,:,index_x*patch_size:(index_x+2)*patch_size, index_y*patch_size: (index_y+2)*patch_size]
-        noise = noise[:,:,index_x*patch_size:(index_x+2)*patch_size, index_y*patch_size: (index_y+2)*patch_size]
-        x_start = x_start[:,:,index_x*patch_size:(index_x+2)*patch_size, index_y*patch_size: (index_y+2)*patch_size]
-        loss_mask = loss_mask[:,:,index_x*patch_size:(index_x+2)*patch_size, index_y*patch_size: (index_y+2)*patch_size]
+        if self.conf.whole_patch:
+            index = [0, 0]
+            index = th.tensor(index, device = 'cuda')
+            H, W = imgs.shape[2:]                       # H  = 256 ;  W = 256
+            patch_num_x = H // patch_size               # 256 // 64  = 4
+            patch_num_y = W // patch_size               # 256 // 64  = 4
+            pos = pos.flatten(0,1).repeat(idx.shape[0], 1)                                                                      # pos.shape = [batch_size x (patch_num_x+1) x (patch_num_y+1), 2]
+            x_t = rearrange(x_t, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)                        # x_t.shape = [batch_size x (patch_num_x+1) x (patch_num_y+1), 3, patch_size, patch_size]
+            noise = rearrange(noise, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)                    # noise.shape = [batch_size x (patch_num_x+1) x (patch_num_y+1), 3, 64, 64]
+            loss_mask = rearrange(loss_mask, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)            # loss_mask.shape = [batch_size x (patch_num_x+1) x (patch_num_y+1), 3, 64, 64]
+        else:
+            index_x = random.randrange(pos.shape[0]-1)
+            index_y = random.randrange(pos.shape[1]-1)
+            index = [index_x, index_y]
+            index = th.tensor(index, device = 'cuda')
+            pos = pos[index_x:index_x+2, index_y:index_y+2].flatten(0,1).repeat(idx.shape[0], 1)
+            x_t = x_t[:,:,index_x*patch_size:(index_x+2)*patch_size, index_y*patch_size: (index_y+2)*patch_size]
+            noise = noise[:,:,index_x*patch_size:(index_x+2)*patch_size, index_y*patch_size: (index_y+2)*patch_size]
+            x_start = x_start[:,:,index_x*patch_size:(index_x+2)*patch_size, index_y*patch_size: (index_y+2)*patch_size]
+            loss_mask = loss_mask[:,:,index_x*patch_size:(index_x+2)*patch_size, index_y*patch_size: (index_y+2)*patch_size]
 
-        x_t = rearrange(x_t, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
-        noise = rearrange(noise, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
-        x_start = rearrange(x_start, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
-        loss_mask = rearrange(loss_mask, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
+            x_t = rearrange(x_t, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
+            noise = rearrange(noise, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
+            x_start = rearrange(x_start, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
+            loss_mask = rearrange(loss_mask, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
+
 
         if self.conf.cfg:
             s_random = th.tensor(np.random.random(t.shape[0])).to(t.device)
@@ -218,15 +231,17 @@ class GaussianDiffusionBeatGans:
                 noise_ori_pad = F.pad(noise_ori, (halfp, halfp, halfp, halfp), 'constant')
                 noise_target_shift = rearrange(noise_ori_pad, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
             else:
-                noise_ori = rearrange(noise, '(b p1 p2) c h w -> b c (p1 h) (p2 w)', p1 = 2, p2 = 2)
-                x_start_ori = rearrange(x_start, '(b p1 p2) c h w -> b c (p1 h) (p2 w)', p1 = 2, p2 = 2)
-                noise_ori_crop = noise_ori[:, :, halfp:-halfp, halfp:-halfp]
-                x_start_ori_crop = x_start_ori[:, :, halfp:-halfp, halfp:-halfp]
-                noise_target_shift = rearrange(noise_ori_crop, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
-                x_start_target_shift = rearrange(x_start_ori_crop, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)
+                if self.conf.whole_patch:
+                    noise_ori = rearrange(noise, '(b p1 p2) c h w -> b c (p1 h) (p2 w)', p1 = patch_num_x+1, p2 = patch_num_y+1)            # noise_ori.shape = [batch_size, 3, image_height + patch_size, image_width + patch_size]
+                    noise_ori_crop = noise_ori[:, :, halfp:-halfp, halfp:-halfp]                                                            # noise_ori_crop.shape = [batch_size, 3, image_height, image_width]
+                    noise_target_shift = rearrange(noise_ori_crop, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)  # noise_target_shift.shape = [batch_size x patch_num_x x patch_num_y, 3, patch_size, patch_size]
+                else:
+                    noise_ori = rearrange(noise, '(b p1 p2) c h w -> b c (p1 h) (p2 w)', p1 = 2, p2 = 2)                                    # noise_ori.shape = (batch_size, 3, patch_size x 2, patch_size x 2)
+                    noise_ori_crop = noise_ori[:, :, halfp:-halfp, halfp:-halfp]                                                            # noise_ori_crop.shape = (batch_size, 3, patch_size, patch_size)
+                    noise_target_shift = rearrange(noise_ori_crop, 'b c (p1 h) (p2 w) -> (b p1 p2) c h w', h = patch_size, w = patch_size)  # noise_target_shift.shape = (batch_size, 3, patch_size, patch_size)
             
             noise_target_no_shift = noise
-            x_start_no_shift = x_start
+            # x_start_no_shift = x_start
 
             # Modified: Change the target
             target_types = {

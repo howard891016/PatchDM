@@ -195,6 +195,9 @@ class TrainConfig(BaseConfig):
     backbone: str = ""
     disable_latent_diffusion: bool = False
 
+    # (Howard add) Other parameters
+    whole_patch: bool = False
+
     # (Howard add) Add vae config
     vae: VaeConfig = field(default_factory=VaeConfig)
 
@@ -252,6 +255,7 @@ class TrainConfig(BaseConfig):
                                               section_counts=section_counts),
                 fp16=self.fp16,
                 cfg=self.cfg,
+                whole_patch=self.whole_patch,
             )
         else:
             raise NotImplementedError()
@@ -466,6 +470,7 @@ class TrainConfig(BaseConfig):
                 semantic_enc = self.semantic_enc,
                 latent_net_conf=latent_net_conf,
                 resnet_cond_channels=self.net_beatgans_resnet_cond_channels,
+                whole_patch=self.whole_patch,
             )
         else:
             raise NotImplementedError(self.model_name)

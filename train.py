@@ -44,6 +44,8 @@ if __name__ == '__main__':
     # (Howard add) Use LDM arch
     parser.add_argument('--ldm', action='store_true',
                         help='use cfg')
+    parser.add_argument('--whole_patch', action='store_true',
+                        help='use whole patch')
 
     args = parser.parse_args()
     gpus = [0,1]
@@ -63,6 +65,7 @@ if __name__ == '__main__':
     conf.min_lr = 1e-6
     conf.lr_decay_gamma = 0.9999
     conf.loss_type = LossType.mse
+    conf.whole_patch = args.whole_patch
 
     if args.semantic_path: assert not args.semantic_enc, "Semantic Encoder mode should turn off"
 

@@ -21,6 +21,8 @@ class BeatGANsAutoencConfig(BeatGANsUNetConfig):
     enc_channel_mult: Tuple[int] = None
     enc_grad_checkpoint: bool = False
     latent_net_conf: MLPSkipNetConfig = None
+    # (Howard add) whole patch or not
+    whole_patch: bool = False
 
     def make_model(self):
         return BeatGANsAutoencModel(self)
@@ -223,7 +225,7 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
 
 
         '''====NOTE: Additional embedding===='''
-        if not do_train: # rendering, need to revise first
+        if not do_train or self.conf.whole_patch: # rendering, need to revise first
             grid_x = torch.linspace(0.5, patch_num_x-0.5, patch_num_x, device=emb.device)
             grid_y = torch.linspace(0.5, patch_num_y-0.5, patch_num_y, device=emb.device)
             xx, yy = torch.meshgrid(grid_x, grid_y, indexing='ij')
@@ -280,9 +282,14 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
         ''' For training mode '''
         # print(do_train)
         if do_train:
-            prob = 1
-            p1 = 2
-            p2 = 2
+            if self.conf.whole_patch:
+                prob = 1
+                p1 = patch_num_x+1
+                p2 = patch_num_y+1
+            else: 
+                prob = 1
+                p1 = 2
+                p2 = 2
         else:
             prob = 1
             p1 = patch_num_x+1

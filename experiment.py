@@ -43,6 +43,11 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 torch.serialization.add_safe_globals([ModelCheckpoint])
 
+import logging
+from utils.logger import get_logger
+logger = get_logger(name=__file__, console_handler_level=logging.INFO, file_handler_level=None)
+
+
 class ExponentialDecayWithMinLR:
     """
     一個 callable class，用於 LambdaLR。
@@ -291,17 +296,38 @@ class LitModel(pl.LightningModule):
         if latent mode => return the inferred latent dataset
         """
         print('on train dataloader start ...')
-        if self.conf.train_mode.require_dataset_infer(): # (Howard add) Only when latent_diffusion or manipulate mode
-            if self.conds is None:
+        if self.conf.train_mode.require_dataset_infer():    # Train Latent Model
+            if self.conds is None:                          # self.conds.shape = (number of data, 512) = (70000, 512) in FFHQ
                 # usually we load self.conds from a file
                 # so we do not need to do this again!
-                self.conds = self.infer_whole_dataset()
-                self.conds_mean.data = self.conds.float().mean(dim=0,
-                                                               keepdim=True)
-                self.conds_std.data = self.conds.float().std(dim=0,
-                                                             keepdim=True)
-            print('mean:', self.conds_mean.mean(), 'std:',
-                  self.conds_std.mean())
+                if self.conf.eval_num_images == -1:
+                    self.conf.eval_num_images = len(self.train_data)
+                self.conds = self.infer_whole_dataset_tk(batch_size=self.conf.batch_size_semantic_enc)
+                # self.conds_mean.data = self.conds.float().mean(dim=0, keepdim=True)
+                # self.conds_std.data = self.conds.float().std(dim=0, keepdim=True)
+                conds_mean = self.conds.mean(dim = 0)                                           # conds_mean.shape = (512, )
+                conds_std = self.conds.std(dim = 0)                                             # conds_std.shape = (512, )
+                self.register_buffer('conds_mean', conds_mean[None, :])                         # conds_mean[None, :].shape = (1, 512)
+                self.register_buffer('conds_std', conds_std[None, :])                           # conds_std[None, :].shape = (1, 512)
+                logger.debug(f'self.conds.shape = {self.conds.shape}')
+                logger.debug(f'self.conds_mean.shape = {self.conds_mean.shape}')
+                logger.debug(f'self.conds_std.shape = {self.conds_std.shape}')
+
+                if self.conf.eval_num_images == len(self.train_data):
+                    latent_save_path = f'{self.conf.logdir}/latent.pkl'
+                    logger.info("latent_save_path = {}".format(latent_save_path))
+
+                    if self.global_rank == 0:
+                        if not os.path.exists(os.path.dirname(latent_save_path)):
+                            os.makedirs(os.path.dirname(latent_save_path))
+                        torch.save(
+                            {
+                                'conds': self.conds,
+                                'conds_mean': conds_mean,
+                                'conds_std': conds_std,
+                            }, latent_save_path)
+
+            logger.info(f'self.conds.shape = {self.conds.shape} ; mean = {self.conds_mean.mean()} ; std = {self.conds_std.mean()}')
 
             # return the dataset with pre-calculated conds
             conf = self.conf.clone()
@@ -416,6 +442,42 @@ class LitModel(pl.LightningModule):
         model.train()
         conds = torch.cat(conds).float()
         return conds
+    
+    def infer_whole_dataset_tk(self, batch_size=None): # TODO: should support parallel dataloader
+        loader = self._train_dataloader(batch_size=self.conf.batch_size_semantic_enc)
+
+        world_size = get_world_size()
+        rank = get_rank()
+        batch_size = chunk_size(self.conf.batch_size_semantic_enc, rank, world_size)
+        eval_num_images = chunk_size(self.conf.eval_num_images, rank, world_size)
+        eval_nums = eval_num_images // batch_size
+        if eval_num_images % batch_size > 0 or eval_num_images % self.batch_size > 0:
+            eval_nums = eval_nums + 1
+        logger.info("eval_num_images = {} ; batch_size_semantic_enc = {} ; batch_size = {} ; eval_nums = {}"
+                    .format(eval_num_images, batch_size, self.batch_size, eval_nums))
+        conds = []
+        for i, batch in enumerate(tqdm(loader, total=eval_nums, desc='infer')):
+            if i == eval_nums:
+                break
+            with torch.no_grad():
+                # imgs_ori, idxs = batch['img'], batch['index']
+                cond = self.model.encoder(batch['img'].to(self.device))
+
+                # used for reordering to match the original dataset
+                idx = batch['index']
+                idx = self.all_gather(idx)
+                if idx.dim() == 2:
+                    idx = idx.T.flatten(0, 1)
+
+                cond = self.all_gather(cond).cpu()
+
+                if cond.dim() == 3:
+                    cond = cond.permute(1, 0, 2).flatten(0, 1)
+                conds.append(cond)
+        self_conds = torch.cat(conds).float().cpu()
+        assert self_conds.shape[0] >= eval_num_images
+        return self_conds
+
 
     def training_step(self, batch, batch_idx):
         """

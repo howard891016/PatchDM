@@ -85,6 +85,7 @@ class TrainConfig(BaseConfig):
     autoenc_mid_attn: bool = True
     batch_size: int = 16
     batch_size_eval: int = None
+    batch_size_semantic_enc: int = None
     beatgans_gen_type: GenerativeType = GenerativeType.ddim
     # beatgans_loss_type: LossType = LossType.l1
     beatgans_loss_type: LossType = LossType.mse

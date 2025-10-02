@@ -6,6 +6,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--batch_size', '-b', type=int, default=512,
                         help='evaluation batch size')
+    parser.add_argument('--batch_size_semantic_enc', type=int, default=1,
+                        help='evaluation batch size for semantic encoder')
     parser.add_argument('--patch_size', '-ps', type=int, default=32,
                         help='model base patch size')
     parser.add_argument('--output_dir', '-g', type=str, default="./output_images",
@@ -40,6 +42,7 @@ if __name__ == '__main__':
     conf.seed = 0
     conf.batch_size = 8
     conf.batch_size_eval = args.batch_size
+    conf.batch_size_semantic_enc = args.batch_size_semantic_enc
     conf.sample_size = 1
     conf.train_mode = TrainMode.latent_diffusion
     conf.beatgans_gen_type = GenerativeType.ddim

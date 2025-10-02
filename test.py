@@ -31,6 +31,12 @@ if __name__ == '__main__':
     
     conf.patch_size = args.patch_size
     conf.output_dir = args.output_dir
+
+    if args.disable_latent_diffusion:
+        conf.output_dir = conf.output_dir + "_disable_latent"
+    else:
+        conf.output_dir = conf.output_dir + "_enable_latent"
+
     conf.seed = 0
     conf.batch_size = 8
     conf.batch_size_eval = args.batch_size

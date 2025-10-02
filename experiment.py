@@ -110,7 +110,16 @@ class LitModel(pl.LightningModule):
         else:
             self.latent_sampler = None
             self.eval_latent_sampler = None
-        if conf.pretrain is not None:
+
+        # conf.pretrain:
+        #   Train PatchDM: None / Train Latent Model: {"name": "72M", "path": ...} / Inference PatchDM: None
+        # conf.disable_latent_diffusion and conf.semantic_enc==False:
+        #   Only used in Inference PatchDM
+        if conf.disable_latent_diffusion and conf.semantic_enc==False:
+            conf.pretrain = PretrainConfig(name='72M', path=f'{conf.full_model_path}') 
+
+        
+        if conf.pretrain is not None:                                                   # Train Latent Model / Inference PatchDM w disable_latent_diffusion: True
             print(f'loading pretrain ... {conf.pretrain.name}')
             state = torch.load(conf.pretrain.path, map_location='cpu')
             print('step:', state['global_step'])
@@ -828,6 +837,12 @@ class LitModel(pl.LightningModule):
                             'conds_mean': conds_mean,
                             'conds_std': conds_std,
                         }, save_path)
+                    
+        if self.conf.disable_latent_diffusion and self.conf.semantic_enc:
+            self.conds = self.infer_whole_dataset_tk(batch_size=self.conf.batch_size_semantic_enc)  # self.conds_mean.shape = [batch_size, 512]
+            # if self.conf.latent_znormalize:
+            #     self.conds_mean = self.conds.mean(dim=0)[None, :]                                           # self.conds_mean.shape = [1, 512]
+            #     self.conds_std = self.conds.std(dim=0)[None, :]                                             # self.conds_std.shape = [1, 512]
 
         # generate images
         for each in self.conf.eval_programs:
@@ -841,28 +856,42 @@ class LitModel(pl.LightningModule):
                     raise ValueError("Wrong value input!")
                 
                 # self.train_dataloader()
-                sampler = self.conf._make_diffusion_conf(T=T).make_sampler()
+                # logger.debug("test_sampler start")
+                test_sampler_conf = self.conf._make_diffusion_conf(T=T)
+                # test_sampler_conf.save("/home/tkyen/workspace/opencv_practice/PatchDM/SpacedDiffusionBeatGansConfig_test_sampler.json")
+                test_sampler = test_sampler_conf.make_sampler()
                 if T_latent is not None:
-                    latent_sampler = self.conf._make_latent_diffusion_conf(
-                        T=T_latent).make_sampler()
+                    if self.conf.disable_latent_diffusion:
+                        data = TensorDataset(self.conds)
+                        # data = IndexedTensorDataset(self.conds)
+                        if self.conf.disable_latent_diffusion and self.conf.semantic_enc:
+                            test_latent_sampler = iter(self.conf.make_loader(data, shuffle=False))
+                        else:
+                            test_latent_sampler = iter(self.conf.make_loader(data, shuffle=True))
+                    else:
+                        # logger.debug("test_latent_sampler start")
+                        test_latent_sampler_conf = self.conf._make_latent_diffusion_conf(T=T_latent)
+                        # latent_sampler_conf.save("/home/tkyen/workspace/opencv_practice/PatchDM/SpacedDiffusionBeatGansConfig_test_latent_sampler.json")
+                        test_latent_sampler = test_latent_sampler_conf.make_sampler()
+                        # logger.debug("test_latent_sampler done")
                 else:
-                    latent_sampler = None
+                    test_latent_sampler = None
 
                 conf = self.conf.clone()
                 # conf.eval_num_images = 50_000
                 # conf.eval_num_images = 1
                 generate(
-                    sampler,
-                    self.model,
+                    test_sampler,                           # SpacedDiffusionBeatGans
+                    self.model,                             # BeatGANsAutoencModel
                     conf,
                     device=self.device,
-                    train_data=self.train_data,
-                    val_data=self.val_data,
-                    latent_sampler=latent_sampler,
-                    conds_mean=self.conds_mean,
-                    conds_std=self.conds_std,
+                    train_data=self.train_data,             # None
+                    val_data=self.val_data,                 # None
+                    latent_sampler=test_latent_sampler,     # SpacedDiffusionBeatGans
+                    conds_mean=self.conds_mean,             # None
+                    conds_std=self.conds_std,               # None
                     remove_cache=False,
-                    clip_latent_noise=clip_latent_noise,
+                    clip_latent_noise=clip_latent_noise,    # False
                 )
 
 

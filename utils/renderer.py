@@ -34,11 +34,16 @@ def render_uncondition(conf: TrainConfig,
         if clip_latent_noise:
             latent_noise = latent_noise.clip(-1, 1)
         print("---is latent diffusion---")
-        cond = latent_sampler.sample(
-            model=model.latent_net,
-            noise=latent_noise,
-            clip_denoised=conf.latent_clip_sample,
-        )
+        if conf.disable_latent_diffusion:
+            conds = next(latent_sampler)
+            # conds, indices = next(latent_sampler)
+            cond = conds[0].to(device)
+        else:
+            cond = latent_sampler.sample(
+                model=model.latent_net,
+                noise=latent_noise,                         # Inference PatchDM: latent_noise.shape = [batch_size, 512]
+                clip_denoised=conf.latent_clip_sample,      # Inference PatchDM: False
+            )
         # print(type(cond))
         # print("cond size")
         # print(cond.shape)

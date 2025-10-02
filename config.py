@@ -363,6 +363,12 @@ class TrainConfig(BaseConfig):
             sampler = DistributedSampler(dataset,
                                          shuffle=shuffle,
                                          drop_last=True)
+        elif self.disable_latent_diffusion and self.semantic_enc:
+            if distributed.is_initialized():
+                sampler = DistributedSampler(dataset, shuffle=True, drop_last=True, seed=0)
+                assert False, "Cannot get the same indices ordering." # TODO
+            else:
+                sampler = None
         else:
             sampler = None
         return DataLoader(

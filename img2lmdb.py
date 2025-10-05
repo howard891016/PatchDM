@@ -50,7 +50,7 @@ def prepare(env,
             paths,
             n_worker,
             # sizes=(128, 256, 512, 1024),
-            sizes=(32, 64, 128),
+            sizes=(64, 256),
             resample=Image.LANCZOS):
     resize_fn = partial(resize_worker, resample=resample)
 

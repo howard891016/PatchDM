@@ -89,11 +89,14 @@ class LitModel(pl.LightningModule):
         self.ema_model.eval()
 
         # (Howard add) Add VaE model
-        print("--- 正在初始化 VAE (first_stage_model) ---")
-        self.vae = conf.make_vae_conf().make_model()
-        self.vae.requires_grad_(False)
-        self.vae.eval()
-        print("--- VAE 初始化完成 ---")
+        if self.conf.use_vae:
+            print("--- 正在初始化 VAE (first_stage_model) ---")
+            self.vae = conf.make_vae_conf().make_model()
+            self.vae.requires_grad_(False)
+            self.vae.eval()
+            print("--- VAE 初始化完成 ---")
+        else:
+            self.vae = None
 
         model_size = 0
         for param in self.model.parameters():
@@ -492,14 +495,19 @@ class LitModel(pl.LightningModule):
                         self.device)) / self.conds_std.to(self.device)
             else:
                 imgs_ori, idxs = batch['img'], batch['index']
-                imgs_ori = self.scale_factor * imgs_ori
+                # imgs_ori = self.scale_factor * imgs_ori
                 # print(f"Scale_factor: {self.scale_factor}")
+                if self.conf.use_vae:
+                    with torch.no_grad():
+                        imgs_ori_enc = self.vae.encode(imgs_ori)
+                else:
+                    imgs_ori_enc = imgs_ori
                 patch_size = self.patch_size
                 halfp = patch_size // 2
-                H,W = imgs_ori.shape[2:]
+                H,W = imgs_ori_enc.shape[2:]
                 assert H%patch_size==0 and W%patch_size== 0, "Image shape should be dividable by patch size"
 
-                imgs_ori_pad = F.pad(imgs_ori, (halfp, halfp, halfp, halfp), 'constant')
+                imgs_ori_pad = F.pad(imgs_ori_enc, (halfp, halfp, halfp, halfp), 'constant')
                 patch_num_x = H // patch_size
                 patch_num_y = W // patch_size
                 grid_x = torch.linspace(0, patch_num_x, patch_num_x+1, device=self.device)

@@ -198,6 +198,7 @@ class TrainConfig(BaseConfig):
 
     # (Howard add) Other parameters
     whole_patch: bool = False
+    use_vae: bool = False
 
     # (Howard add) Add vae config
     vae: VaeConfig = field(default_factory=VaeConfig)
@@ -257,6 +258,7 @@ class TrainConfig(BaseConfig):
                 fp16=self.fp16,
                 cfg=self.cfg,
                 whole_patch=self.whole_patch,
+                use_vae=self.use_vae,
             )
         else:
             raise NotImplementedError()
@@ -478,6 +480,7 @@ class TrainConfig(BaseConfig):
                 latent_net_conf=latent_net_conf,
                 resnet_cond_channels=self.net_beatgans_resnet_cond_channels,
                 whole_patch=self.whole_patch,
+                use_vae=self.use_vae,
             )
         else:
             raise NotImplementedError(self.model_name)

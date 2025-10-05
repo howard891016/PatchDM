@@ -41,6 +41,7 @@ class GaussianDiffusionBeatGansConfig(BaseConfig):
     train_pred_xstart_detach: bool = True
     cfg: bool = True
     whole_patch: bool = False # (Howard add) whether use whole patch to train the model
+    use_vae: bool = False # (Howard add) whether use vae to encode the image
 
     def make_sampler(self):
         return GaussianDiffusionBeatGans(self)
@@ -108,7 +109,7 @@ class GaussianDiffusionBeatGans:
     def training_losses(self,
                         model: Model,
                         x_start: th.Tensor, # padded original img
-                        imgs: th.Tensor, # original img
+                        imgs: th.Tensor, # original img: use_vae => 256x256 / not use_vae => 64x64
                         t: th.Tensor, # [0,1000]
                         pos: th.Tensor,
                         loss_mask: th.Tensor,
@@ -218,6 +219,7 @@ class GaussianDiffusionBeatGans:
                                               patch_size = patch_size,
                                               random = s_random,
                                               pos_random = pos_random,
+                                              use_vae=self.conf.use_vae,
                                               **model_kwargs)
             model_output_shift = model_forward.pred
             model_output_no_shift = model_forward.pred2

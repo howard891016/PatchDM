@@ -33,7 +33,7 @@ class VaeConfig:
     params: Dict[str, Any] = field(default_factory=dict)
     
     # 我們新增一個欄位來專門指定 VAE 的權重檔路徑
-    ckpt_path: str = None 
+    ckpt_path: str = "../LDM_Patch/models/first_stage_models/vq-f4/model.ckpt"
 
     def make_model(self):
         """
@@ -63,6 +63,7 @@ class VaeConfig:
                 model.load_state_dict(state_dict, strict=False)
         else:
             print("警告：未提供 VAE ckpt_path，VAE 將使用隨機初始化的權重。")
+            assert False, "VAE ckpt_path is required."
 
         return model
 

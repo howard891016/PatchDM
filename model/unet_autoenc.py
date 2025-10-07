@@ -23,6 +23,7 @@ class BeatGANsAutoencConfig(BeatGANsUNetConfig):
     latent_net_conf: MLPSkipNetConfig = None
     # (Howard add) whole patch or not
     whole_patch: bool = False
+    use_vae: bool = False
 
     def make_model(self):
         return BeatGANsAutoencModel(self)

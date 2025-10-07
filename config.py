@@ -19,7 +19,7 @@ from torch.utils.data.distributed import DistributedSampler
 from dataclasses import dataclass, field
 from typing import Dict, Any
 
-from LDM_Patch.ldm.util import instantiate_from_config
+from ldm.util import instantiate_from_config
 
 @dataclass
 class PretrainConfig(BaseConfig):
@@ -186,7 +186,7 @@ class TrainConfig(BaseConfig):
     eval_programs: Tuple[str] = None
     # if present load the checkpoint from this path instead
     eval_path: str = None
-    base_dir: str = '/tmp2'
+    base_dir: str = '/home/howard/PatchDM'
     use_cache_dataset: bool = False
     data_cache_dir: str = os.path.expanduser('~/cache')
     work_cache_dir: str = os.path.expanduser('~/mycache')

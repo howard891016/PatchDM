@@ -500,6 +500,8 @@ class LitModel(pl.LightningModule):
                 if self.conf.use_vae:
                     with torch.no_grad():
                         imgs_ori_enc = self.vae.encode(imgs_ori)
+                        print("Use vae")
+                        print(f"imgs_ori_enc.shape = {imgs_ori_enc.shape}")
                 else:
                     imgs_ori_enc = imgs_ori
                 patch_size = self.patch_size
@@ -522,7 +524,7 @@ class LitModel(pl.LightningModule):
                 """
                 main training mode!!!
                 """
-                t = torch.randint(0, 1000, size=(imgs_ori.shape[0],), device=self.device)
+                t = torch.randint(0, 1000, size=(imgs_ori_enc.shape[0],), device=self.device)
                 losses = self.sampler.training_losses(model=self.model,
                                                       x_start = imgs_ori_pad,
                                                       imgs=imgs_ori,
@@ -566,16 +568,16 @@ class LitModel(pl.LightningModule):
 
         return {'loss': loss}
     
-    def on_train_batch_start(self, batch, batch_idx: int, dataloader_idx) -> None:
-        if self.current_epoch == 0 and self.global_step == 0:
-            z = batch['img']
+    # def on_train_batch_start(self, batch, batch_idx: int, dataloader_idx) -> None:
+    #     if self.current_epoch == 0 and self.global_step == 0:
+    #         z = batch['img']
             
             
-            new_scale = 1. / z.flatten().std()
-            del self.scale_factor
-            self.register_buffer('scale_factor', new_scale)
-            # self.scale_factor = new_scale
-            print(f"New scale factor: {self.scale_factor}")
+    #         new_scale = 1. / z.flatten().std()
+    #         del self.scale_factor
+    #         self.register_buffer('scale_factor', new_scale)
+    #         # self.scale_factor = new_scale
+    #         print(f"New scale factor: {self.scale_factor}")
 
     def on_train_batch_end(self, outputs, batch, batch_idx: int,
                            dataloader_idx: int) -> None:
@@ -694,8 +696,8 @@ class LitModel(pl.LightningModule):
                         else: # here
                             print("_xstart is not None in log_sample.")
                             print("_xstart shape: " + str(_xstart.shape))
-                            print("_idx shape: " + str(_idx.shape))
-                            print("_idx: " + str(_idx))
+                            # print("_idx shape: " + str(_idx.shape))
+                            # print("_idx: " + str(_idx))
                         # import sys
                         # sys.exit()
                         gen = self.eval_sampler.sample(model=model,

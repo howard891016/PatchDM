@@ -134,6 +134,15 @@ class BaseLMDB(Dataset):
     def __init__(self, path, original_resolution, zfill: int = 5):
         self.original_resolution = original_resolution
         self.zfill = zfill
+
+        db_size = 0
+        if os.path.exists(path):
+            for f in os.listdir(path):
+                fp = os.path.join(path, f)
+                if os.path.isfile(fp):
+                    db_size += os.path.getsize(fp)
+        map_size = max(db_size * 2, 1 << 30)
+
         self.env = lmdb.open(
             path,
             max_readers=32,
@@ -141,8 +150,8 @@ class BaseLMDB(Dataset):
             lock=False,
             readahead=False,
             meminit=False,
+            map_size=map_size,
         )
-
         if not self.env:
             raise IOError('Cannot open lmdb dataset', path)
 

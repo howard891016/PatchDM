@@ -33,7 +33,7 @@ class VaeConfig:
     params: Dict[str, Any] = field(default_factory=dict)
     
     # 我們新增一個欄位來專門指定 VAE 的權重檔路徑
-    ckpt_path: str = "../LDM_Patch/models/first_stage_models/vq-f4/model.ckpt"
+    ckpt_path: str = "./LDM_Patch/models/first_stage_models/vq-f4/model.ckpt"
 
     def make_model(self):
         """
@@ -186,7 +186,7 @@ class TrainConfig(BaseConfig):
     eval_programs: Tuple[str] = None
     # if present load the checkpoint from this path instead
     eval_path: str = None
-    base_dir: str = '/home/howard/PatchDM'
+    base_dir: str = '/home/howard/PatchDM/checkpoints'
     use_cache_dataset: bool = False
     data_cache_dir: str = os.path.expanduser('~/cache')
     work_cache_dir: str = os.path.expanduser('~/mycache')

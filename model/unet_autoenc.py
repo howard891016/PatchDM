@@ -130,7 +130,7 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
                 patch_size = 64,
                 pos_random = None,
                 random = None,
-                use_vae = False,
+                use_vae = True,
                 **kwargs):
         """
         Apply the model to an input batch.
@@ -158,9 +158,11 @@ class BeatGANsAutoencModel(BeatGANsUNetModel):
             if self.sem_enc: # Training: sem_enc is true.
                 # print("sem_enc == True")
                 if use_vae: # image size = 256
+                    # print("Use vae in model.forward to encode")
                     imgs_resize = torch.nn.functional.interpolate(imgs, size=(64, 64), mode='bilinear', align_corners=False)
                 else:
                     imgs_resize = imgs
+                # print(f"Train: In semantic_enc mode, imgs_resize.shape of model.forward to encode = {imgs_resize.shape}")
                 cond = self.encode(imgs_resize)["cond"]
             else:
                 # print("sem_enc == False")

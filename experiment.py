@@ -499,9 +499,10 @@ class LitModel(pl.LightningModule):
                 # print(f"Scale_factor: {self.scale_factor}")
                 if self.conf.use_vae:
                     with torch.no_grad():
+                        # print(f"imgs_ori.shape = {imgs_ori.shape}")                 # 256x256
                         imgs_ori_enc = self.vae.encode(imgs_ori)
-                        print("Use vae")
-                        print(f"imgs_ori_enc.shape = {imgs_ori_enc.shape}")
+                        # print("Use vae")
+                        # print(f"imgs_ori_enc.shape = {imgs_ori_enc.shape}")         # 64x64
                 else:
                     imgs_ori_enc = imgs_ori
                 patch_size = self.patch_size
@@ -596,10 +597,19 @@ class LitModel(pl.LightningModule):
                 idx = None
             else:
                 imgs = batch['img']
+                if self.conf.use_vae:
+                    with torch.no_grad():
+                        # print("Use vae in on_train_batch_end")
+                        # print(f"imgs.shape = {imgs.shape}")
+                        imgs_enc = self.vae.encode(imgs)
+                        # print("Use vae")
+                        # print(f"imgs.shape = {imgs_enc.shape}")
+                else:
+                    imgs_enc = imgs
                 idx = batch["index"] # idx: [1,70000]
                 # print("idx:")
                 # print(idx)
-                self.log_sample(x_start = imgs, step = self.global_step, idx = idx)
+                self.log_sample(x_start = imgs_enc, step = self.global_step, idx = idx)
 
     def on_before_optimizer_step(self, optimizer: Optimizer,
                                  optimizer_idx: int) -> None:

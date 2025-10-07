@@ -169,7 +169,12 @@ class GaussianDiffusionBeatGans:
         if self.conf.whole_patch:
             index = [0, 0]
             index = th.tensor(index, device = 'cuda')
-            H, W = imgs.shape[2:]                       # H  = 256 ;  W = 256
+            # print(f"x_start.shape = {x_t.shape}")             # x_start.shape = [batch_size, 3, image_height + patch_size, image_width + patch_size]
+            # if self.conf.use_vae:
+            #     H, W = x_start.shape[2:]           # H = 64 ; W = 64
+            # else:
+            #     H, W = imgs.shape[2:]  
+            H, W = 64, 64                     # H  = 256 ;  W = 256
             patch_num_x = H // patch_size               # 256 // 64  = 4
             patch_num_y = W // patch_size               # 256 // 64  = 4
             pos = pos.flatten(0,1).repeat(idx.shape[0], 1)                                                                      # pos.shape = [batch_size x (patch_num_x+1) x (patch_num_y+1), 2]
@@ -209,6 +214,7 @@ class GaussianDiffusionBeatGans:
                 # print(f"t Max value: {max_val.item()}, t Min value: {min_val.item()}")
 
                 # x_t is static wrt. to the diffusion process
+                # print("In training_losses, use_vae = " + str(self.conf.use_vae))
                 model_forward = model.forward(x=x_t.detach(),
                                               t=self._scale_timesteps(t),
                                               pos=pos.detach(),
@@ -252,8 +258,8 @@ class GaussianDiffusionBeatGans:
                 ModelMeanType.eps: {"shift": noise_target_shift, "no_shift":noise_target_no_shift},
             }
             target = target_types[self.model_mean_type]
-            assert model_output_shift.shape == target["shift"].shape 
-            assert model_output_no_shift.shape == target["no_shift"].shape
+            assert model_output_shift.shape == target["shift"].shape, f"model_output_shift.shape = {model_output_shift.shape}, target[shift].shape = {target['shift'].shape}"
+            assert model_output_no_shift.shape == target["no_shift"].shape, f"model_output_no_shift.shape = {model_output_no_shift.shape}, target[no_shift].shape = {target['no_shift'].shape}"
 
             # x_start max = 1.
             # x_start min = -1.

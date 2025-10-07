@@ -41,7 +41,7 @@ if __name__ == '__main__':
                         help='use vae')
 
     args = parser.parse_args()
-    gpus = [0,1]
+    gpus = [0]
 
     conf = train_autoenc()
 
